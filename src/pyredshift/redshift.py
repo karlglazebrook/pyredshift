@@ -407,18 +407,33 @@ def line_menu(xd, yd):
     """Pop up the quick line list at the cursor (right-click).  Returns
     the chosen rest wavelength (in current wavelength units), or None if
     cancelled (click elsewhere, or any key)."""
-    # Entries from the ESC shortcut list, labelled from the line list
+    # Entries from the ESC shortcut list, labelled from the line list,
+    # padded into aligned columns (monospace)
     entries = []
     for key, wav in sorted(shortcuts.items(), key=lambda kv: kv[1]):
         wrest = wav / 10000.0 if micron_mode else float(wav)
         i = int(np.argmin(np.abs(line_wav - wrest)))
         lab = line_label[i] if line_label[i] != "IGNORE" else str(wav)
-        entries.append(("%s %d" % (lab, wav), wrest))
+        entries.append(("%-7s %4d" % (lab, wav), wrest))
     n = len(entries)
 
-    # Geometry in display pixels, anchored at the click, kept on-canvas
-    ih, pad, wpx = 20.0, 6.0, 118.0
+    # Geometry from real font metrics (hardcoded pixels break on HiDPI)
+    fs = 10
+    probe = fig.text(0.5, 0.5, max(e[0] for e in entries),
+                     fontsize=fs, family="monospace")
+    try:
+        bb = probe.get_window_extent()
+    except Exception:
+        fig.canvas.draw()
+        bb = probe.get_window_extent()
+    probe.remove()
+    ih = bb.height * 1.55       # row height
+    pad = bb.height * 0.55      # box padding
+    tpad = bb.height * 0.7      # text indent
+    wpx = bb.width + 2 * tpad
     hpx = n * ih + 2 * pad
+
+    # Anchor at the click, kept on-canvas
     x0, y0 = ax.transData.transform((xd, yd))
     if x0 + wpx > fig.bbox.width:
         x0 -= wpx
@@ -438,8 +453,8 @@ def line_menu(xd, yd):
     fig.add_artist(hi)
     texts = []
     for k, (labtext, wrest) in enumerate(entries):
-        tx, ty = inv.transform((x0 + 8, top - pad - k * ih - 0.72 * ih))
-        texts.append(fig.text(tx, ty, labtext, fontsize=9, zorder=52,
+        tx, ty = inv.transform((x0 + tpad, top - pad - k * ih - 0.74 * ih))
+        texts.append(fig.text(tx, ty, labtext, fontsize=fs, zorder=52,
                               family="monospace",
                               color="black" if light else "white"))
     if cursor is not None:
