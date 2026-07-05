@@ -395,30 +395,38 @@ def refresh():
 # ---------------------------------------------------------------------------
 readout_artist = None
 readout_bg = None      # (background, bbox) pair for blitting
+readout_lastev = None  # last motion event, to survive full redraws
 
 
 def make_readout():
-    global readout_artist, readout_bg
+    global readout_artist, readout_bg, readout_lastev
     readout_artist = fig.text(0.995, 0.012, "", ha="right", va="bottom",
                               family="monospace", fontsize=8, animated=True,
                               color="white" if dark_mode else "black")
     readout_bg = None
+    readout_lastev = None
     fig.canvas.mpl_connect("draw_event", snapshot_readout)
     fig.canvas.mpl_connect("motion_notify_event", update_readout)
 
 
 def snapshot_readout(ev):
     """Cache the bottom-right corner after every full draw (the readout
-    artist is animated, so it is never part of the cached image)."""
+    artist is animated, so it is never part of the cached image), then
+    re-render the readout so redraws don't blank it - recomputed, so a
+    new redshift updates the rest wavelength immediately."""
     global readout_bg
     W, H = fig.bbox.width, fig.bbox.height
     box = Bbox([[0.40 * W, 0.0], [W, 0.055 * H]])
     readout_bg = (fig.canvas.copy_from_bbox(box), box)
+    if readout_lastev is not None:
+        update_readout(readout_lastev)
 
 
 def update_readout(ev):
+    global readout_lastev
     if readout_artist is None or readout_bg is None or f is None:
         return
+    readout_lastev = ev
     if ev.inaxes is ax and ev.xdata is not None:
         i = int(np.argmin(np.abs(w - ev.xdata)))
         wfmt = "%.5f" if micron_mode else "%.2f"
