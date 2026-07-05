@@ -21,3 +21,4 @@ test_crosshair.py
 !Example-Spectra/*.fits
 *.pdf
 .ipynb_checkpoints/
+.jupyter/
