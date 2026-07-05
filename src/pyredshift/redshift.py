@@ -414,7 +414,8 @@ def line_menu(xd, yd):
         wrest = wav / 10000.0 if micron_mode else float(wav)
         i = int(np.argmin(np.abs(line_wav - wrest)))
         lab = line_label[i] if line_label[i] != "IGNORE" else str(wav)
-        entries.append(("%-7s %4d" % (lab, wav), wrest))
+        wav_A = line_wav[i] * (10000.0 if micron_mode else 1.0)  # true vacuum
+        entries.append(("%-7s %4.0f" % (lab, wav_A), wrest))
     n = len(entries)
 
     # Geometry from real font metrics (hardcoded pixels break on HiDPI)
