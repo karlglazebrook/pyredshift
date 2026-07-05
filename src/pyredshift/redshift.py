@@ -543,7 +543,12 @@ def ensure_gui_backend():
     """Under IPython with a non-interactive backend (inline, ipympl, Agg)
     switch to a native GUI backend so the window can pop up.  Returns the
     previous backend name if we switched (restored on quit), else None."""
-    if not in_ipython() or "MPLBACKEND" in os.environ:
+    if not in_ipython():
+        return None
+    # Respect an explicitly forced backend - but NOT the inline/ipympl one,
+    # because ipykernel itself sets MPLBACKEND to that in every notebook
+    forced = os.environ.get("MPLBACKEND", "")
+    if forced and "inline" not in forced and "ipympl" not in forced:
         return None
     current = matplotlib.get_backend()
     if current.lower() in GUI_BACKENDS:
