@@ -107,8 +107,15 @@ scripted-session regression after touching the main loop.
 - Example spectra are real survey data — update
   `Example-Spectra/CREDITS.md` when adding any.
 
-## Saved for later (unimplemented redshift.f keys)
+## Wishlist
 
-`l` list lines, `n` add line, `f` zoom factors, `j` tag line with "?",
-`M` fixed-45Å EW box, `v` RMS in region, `c` insert comment,
-`-`/`+`/`@` multispectral (fibre survey) navigation.
+- Unimplemented redshift.f keys: `l` list lines, `n` add line, `f` zoom
+  factors, `j` tag line with "?", `M` fixed-45Å EW box, `v` RMS in
+  region, `c` insert comment, `-`/`+`/`@` multispectral (fibre survey)
+  navigation.
+- specutils escape hatch: `-f specutils` (and/or a last-resort fallback
+  when auto-detection fails) that tries `Spectrum1D.read()` and extracts
+  `spectral_axis.to(AA)` + flux. Import inside the function — specutils
+  (gwcs/asdf/ndcube tree) must NOT become a hard dependency. Inherits
+  the long tail of official survey loaders (MUSE, HST, 6dF...) while
+  keeping our detection as the trusted first string.
