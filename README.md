@@ -10,7 +10,7 @@ widths — all from single keypresses. It is the Python descendant of the
 author's venerable `redshift.f` (Fortran/Figaro, 1990s) via `pdlredshift`
 (Perl/PDL/PGPLOT), and deliberately keeps that fast keyboard-driven feel.
 
-![pyredshift showing an SDSS z=2.5 quasar in --retro mode](screenshot.png)
+![pyredshift showing an SDSS z=2.5 quasar in --retro mode](https://raw.githubusercontent.com/karlglazebrook/pyredshift/main/screenshot.png)
 
 *An SDSS quasar from [Example-Spectra](Example-Spectra/) at z = 2.48 and
 counting, in `--retro` mode: Lyα, CIV and CIII] lined up; the crosshair

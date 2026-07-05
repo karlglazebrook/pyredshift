@@ -13,10 +13,24 @@ from setuptools import setup
 
 setup(
     name="pyredshift",
-    version="1.8",
-    description="Interactive redshifting of 1D spectra "
+    version="1.9",
+    description="Interactive redshifting of 1D astronomical spectra "
                 "(Python successor of pdlredshift / redshift.f)",
+    long_description=open("README.md").read(),
+    long_description_content_type="text/markdown",
     author="Karl Glazebrook",
+    url="https://github.com/karlglazebrook/pyredshift",
+    license="MIT",
+    classifiers=[
+        "Development Status :: 5 - Production/Stable",
+        "Intended Audience :: Science/Research",
+        "Topic :: Scientific/Engineering :: Astronomy",
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3",
+        "Environment :: MacOS X",
+        "Environment :: X11 Applications",
+    ],
+    keywords="astronomy spectroscopy redshift spectra interactive",
     packages=["pyredshift"],
     package_dir={"": "src"},
     package_data={"pyredshift": ["pyredshift.lines", "pyredshift-help.html"]},

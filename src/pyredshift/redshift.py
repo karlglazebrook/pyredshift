@@ -42,6 +42,8 @@ V1.8 - Right-click pops up the quick line list as a menu: pick a line
        to set the redshift at the clicked position (same as ESC+key).
      - pyredshift.lines colours may be 'light/dark' pairs; the strong
        lines are now goldenrod on white, yellow on the retro background.
+V1.9 - First PyPI release. --microns flag (keeps micron wavelengths so
+       micron-mode display is reachable from files); packaging metadata.
 """
 
 import ctypes
@@ -81,7 +83,7 @@ try:
 except AttributeError:
     pass
 
-__version__ = "1.8"
+__version__ = "1.9"
 
 C_LIGHT = 2.99792458e8  # m/s
 
