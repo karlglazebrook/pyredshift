@@ -1,0 +1,114 @@
+<h1>pyredshift help</h1>
+
+<input type="radio" name="tabs" id="tab-keys" checked>
+<input type="radio" name="tabs" id="tab-lines">
+<input type="radio" name="tabs" id="tab-guide">
+<nav class="tabs">
+  <label for="tab-keys">Commands</label>
+  <label for="tab-lines">Line list</label>
+  <label for="tab-guide">Guide</label>
+</nav>
+
+<section class="tab" id="pane-keys">
+
+<h2>Mouse</h2>
+<table>
+<tr><th>Input</th><th>Action</th></tr>
+<tr><td>click (or SPC or A)</td><td>show wavelength at cursor</td></tr>
+<tr><td>drag</td><td>rubber-band zoom, like <code>e</code> &mdash; a purely
+horizontal drag zooms X only; purely vertical, Y only</td></tr>
+</table>
+
+<h2>Redshift</h2>
+<table>
+<tr><th>Key</th><th>Action</th></tr>
+<tr><td>ESC key</td><td>mark known line at cursor via shortcut key
+(see below; backquote works as ESC)</td></tr>
+<tr><td>ESC ESC</td><td>refine redshift using nearest line</td></tr>
+<tr><td>g</td><td>guess redshift (enter wavelength of probable line)</td></tr>
+<tr><td>=</td><td>enter redshift directly</td></tr>
+<tr><td>r</td><td>remove features from plot</td></tr>
+</table>
+
+<p>Shortcut keys after ESC:</p>
+<table>
+<tr><th>Key</th><th>Line</th><th>Key</th><th>Line</th></tr>
+<tr><td>l</td><td>Ly&alpha; 1216</td><td>g</td><td>G 4304</td></tr>
+<tr><td>c</td><td>CIV 1549</td><td>b</td><td>H&beta; 4861</td></tr>
+<tr><td>m</td><td>MgII 2800</td><td>O</td><td>[OIII] 5007</td></tr>
+<tr><td>o</td><td>[OII] 3727</td><td>d</td><td>NaD 5892</td></tr>
+<tr><td>k</td><td>K 3933</td><td>a</td><td>H&alpha; 6563</td></tr>
+<tr><td>h</td><td>H 3969</td><td></td><td></td></tr>
+</table>
+
+<h2>Pan / zoom</h2>
+<table>
+<tr><th>Key</th><th>Action</th></tr>
+<tr><td>[ ]</td><td>pan left/right</td></tr>
+<tr><td>z / u</td><td>zoom / unzoom X axis</td></tr>
+<tr><td>i / o</td><td>zoom / unzoom Y axis ("in" / "out")</td></tr>
+<tr><td>x / y</td><td>set X range / Y range (two cursor picks)</td></tr>
+<tr><td>e</td><td>expand plot (two corner picks)</td></tr>
+<tr><td>w</td><td>whole X range</td></tr>
+<tr><td>a</td><td>autoscale Y axis</td></tr>
+<tr><td>h</td><td>home &mdash; restore initial display range</td></tr>
+<tr><td>d</td><td>display again</td></tr>
+</table>
+
+<h2>Analysis</h2>
+<table>
+<tr><th>Key</th><th>Action</th></tr>
+<tr><td>_</td><td>continuum fit and estimate noise</td></tr>
+<tr><td>m</td><td>measure EW/flux of line (define continuum first)</td></tr>
+<tr><td>b</td><td>plot binned up spectrum</td></tr>
+<tr><td>s</td><td>plot smoothed spectrum</td></tr>
+<tr><td>t</td><td>overlay template spectrum (currently {template})</td></tr>
+<tr><td>k</td><td>kill nearest line from list</td></tr>
+<tr><td>B</td><td>bodge cosmic rays/sky by replacing with ZERO</td></tr>
+</table>
+
+<h2>Other</h2>
+<table>
+<tr><th>Key</th><th>Action</th></tr>
+<tr><td>p</td><td>print to PDF (pyredshift.pdf)</td></tr>
+<tr><td>?</td><td>this help</td></tr>
+<tr><td>q</td><td>quit</td></tr>
+</table>
+
+</section>
+
+<section class="tab" id="pane-lines">
+
+<h2>Line list</h2>
+<p>All wavelengths are VACUUM, in &Aring;ngstroms (from pyredshift.lines,
+colours as plotted):</p>
+{linelist}
+
+</section>
+
+<section class="tab" id="pane-guide">
+
+<h2>Guide</h2>
+<p>pyredshift is a tool for measuring the redshift of a galaxy or quasar
+from a 1D spectrum, by eye. Run it as <code>pyredshift file</code> &mdash;
+the format (FITS image or table, SDSS, JWST, XSHOOTER, OutThere, CSV,
+2-column ascii) is auto-detected, with <code>-f</code> to force one,
+<code>-z</code> to start from a known redshift and <code>--dark</code>
+for a black background. It plots the spectrum histogram-style with a
+crosshair cursor, and overlays rest-frame line identifications that
+follow the trial redshift shown at top left.</p>
+
+<p>The basic game: spot a feature you can identify, put the crosshair on
+it and press <code>ESC</code> then the line's shortcut key (or
+<code>g</code> to type any rest wavelength) &mdash; the line labels jump
+to that redshift. Now check the other features line up, panning and
+zooming (mouse drag works), binning (<code>b</code>) or smoothing
+(<code>s</code>) to dig in the noise, and refining with
+<code>ESC ESC</code> on the sharpest line. Along the way you can fit a
+continuum (<code>_</code>) and measure equivalent widths and line fluxes
+(<code>m</code>), and print to PDF (<code>p</code>). <code>q</code>
+quits and reports the final redshift to the terminal. It is the Python
+descendant of Karl's venerable <code>redshift.f</code> (Fortran, 1990s)
+via <code>pdlredshift</code> (Perl/PDL).</p>
+
+</section>

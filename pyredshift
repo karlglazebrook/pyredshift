@@ -1,0 +1,292 @@
+#!/usr/bin/env python3
+"""
+pyredshift - read a 1D spectrum in any of the usual formats and
+redshift it interactively.  Python port of the Perl 'pdlredshift'.
+
+Usage:
+    pyredshift spectrum.fits              # format auto-detected
+    pyredshift spectrum.fits -f sdss      # manual override
+    pyredshift spectrum.fits -z 2.19      # start at a known redshift
+
+Formats are auto-detected where possible by inspecting the FITS HDUs
+and column names/units, replacing the old mode zoo:
+    ascii     2 column ascii file
+    csv       comma separated, header rows skipped (NIRSPEC ERO data)
+    fits      1D (or 2D - row 1 used) FITS image with WCS; handles
+              CD1_1 overriding CDELT1 and IRAF/SDSS log-lambda flags
+    sdss      SDSS binary table (LOGLAM/FLUX, either case)
+    table     generic binary table with wave+flux columns; TUNIT
+              (um, nm, Angstrom...) converted automatically.
+              (aliases: jwst, jwst2, gabe, dja)
+    xs        XSHOOTER 1D table spectrum (WAVE in nm)
+    xs2       XSHOOTER as FITS image in extension 1 (Corentin's code)
+    outthere  OutThere multi-extension grism spectra: F115W/F150W/F200W
+              extensions stitched in wavelength order, flux/flat
+              calibrated, overlaps trimmed at the filter transitions
+"""
+
+import argparse
+import os
+import re
+import sys
+
+import numpy as np
+from astropy.io import fits
+from astropy import units as u
+
+# Dev override: a src/pyredshift package next to this script, or under the
+# current directory, is picked up in preference to the pip-installed one
+for _p in (os.path.join(os.path.dirname(os.path.abspath(__file__)), "src"),
+           os.path.join(os.getcwd(), "src")):
+    if os.path.isdir(os.path.join(_p, "pyredshift")):
+        sys.path.insert(0, _p)
+from pyredshift import redshift as redshift_module
+
+WAVE_COLS = ("wave", "wavelength", "lam", "lambda", "awav", "wav")
+FLUX_COLS = ("flux", "flam", "fnu", "spec", "counts")
+
+# Old pdlredshift mode names that the generic table reader now covers
+ALIASES = {"jwst": "table", "jwst2": "table", "gabe": "table", "dja": "table"}
+
+
+def wave_factor(unit_str):
+    """Conversion factor from a TUNIT string to Angstroms, or None."""
+    if not unit_str:
+        return None
+    try:
+        return float((1 * u.Unit(unit_str)).to(u.AA).value)
+    except Exception:
+        return None
+
+
+def read_ascii(fname):
+    print("Reading file %s as a 2 column ascii file" % fname)
+    wav, spec = np.loadtxt(fname, usecols=(0, 1), comments="#", unpack=True)
+    return wav, spec, True
+
+
+def read_csv(fname):
+    print("Reading file %s as a CSV table spectrum" % fname)
+    # Exclude headers: rows beginning with # or letters
+    wav, spec = [], []
+    with open(fname) as fh:
+        for line in fh:
+            if not line.strip() or re.match(r"^#|^\s*[A-Za-z]", line):
+                continue
+            parts = line.split(",")
+            try:
+                wav.append(float(parts[0]))
+                spec.append(float(parts[1]))
+            except (IndexError, ValueError):
+                continue
+    return np.array(wav), np.array(spec), True
+
+
+def first_table(hdul):
+    for hdu in hdul:
+        if getattr(hdu, "columns", None) is not None and hdu.data is not None:
+            return hdu
+    return None
+
+
+def first_image(hdul):
+    for hdu in hdul:
+        if hdu.is_image and hdu.data is not None and hdu.data.size > 1:
+            return hdu
+    return None
+
+
+def looks_outthere(hdul):
+    n = 0
+    for hdu in hdul:
+        if getattr(hdu, "columns", None) is None:
+            continue
+        extname = str(hdu.header.get("EXTNAME", ""))
+        if re.match(r"^F\d+W", extname) and "flat" in [c.lower() for c in hdu.columns.names]:
+            n += 1
+    return n >= 2
+
+
+def read_table(hdu, hint=""):
+    """Generic FITS table spectrum: find the wave/flux columns whatever
+    their case, use TUNIT to fix the wavelength units."""
+    low = {c.lower(): c for c in hdu.columns.names}
+
+    if "loglam" in low:  # The particular SDSS format FITS table
+        print("as a SDSS table spectrum")
+        wav = 10.0 ** np.asarray(hdu.data[low["loglam"]], float).ravel()
+        spec = np.asarray(hdu.data[low["flux"]], float).ravel()
+        return wav, spec
+
+    wcol = next((low[n] for n in WAVE_COLS if n in low), None)
+    fcol = next((low[n] for n in FLUX_COLS if n in low), None)
+    if wcol is None or fcol is None:
+        sys.exit("Cannot identify wavelength/flux columns among %s"
+                 % list(hdu.columns.names))
+    print("as a FITS table spectrum (columns %s, %s)" % (wcol, fcol), end="")
+    wav = np.asarray(hdu.data[wcol], float).ravel()
+    spec = np.asarray(hdu.data[fcol], float).ravel()
+
+    fac = wave_factor(hdu.columns[wcol].unit)
+    if fac is not None and fac != 1.0:
+        print("  [%s -> Angstroms]" % hdu.columns[wcol].unit, end="")
+        wav = wav * fac
+    elif fac is None and "SHOOT" in hint.upper():
+        print("  [XSHOOTER nm -> Angstroms]", end="")
+        wav = wav * 10.0
+    print()
+    return wav, spec
+
+
+def read_image(hdu):
+    print("as a FITS image spectrum", end="")
+    spec = np.asarray(hdu.data, float)
+    h = hdu.header
+    if spec.ndim == 2:  # Handle 2D case
+        print("   found 2D file, assuming row 1", end="")
+        spec = spec[0].copy()
+    x = np.arange(spec.size, dtype=float)
+    wav = x.copy()  # In case there is no WCS
+    has_wcs = "CRVAL1" in h
+    if has_wcs:
+        print(" found WCS", end="")
+        # See https://www.aanda.org/articles/aa/pdf/2002/45/aah3859.pdf
+        delt = h.get("CDELT1", 1.0)
+        if "CD1_1" in h:
+            delt = h["CD1_1"]  # CD1_1 overrides!
+        wav = (x - h.get("CRPIX1", 1.0) + 1) * delt + h["CRVAL1"]
+        # First is IRAF, second is SDSS convention
+        if h.get("DC-FLAG") or h.get("LOGSCALE") == 1:
+            print(" log scale", end="")
+            wav = 10.0 ** wav
+        else:
+            print(" linear scale", end="")
+    print()
+    return wav, spec, has_wcs
+
+
+def read_outthere(hdul):
+    """Read the F115W/F150W/F200W grism extensions and append them."""
+    print("as OutThere multi-extension grism spectra")
+    tabs = [hdu for hdu in hdul
+            if getattr(hdu, "columns", None) is not None
+            and str(hdu.header.get("EXTNAME", "")).startswith("F")]
+    tabs.sort(key=lambda hdu: hdu.header["EXTNAME"])  # EXTNAME order == wavelength order
+    wav = np.array([])
+    spec = np.array([])
+    for tab in tabs:
+        ext = tab.header["EXTNAME"]
+        wave = np.asarray(tab.data["wave"], float).ravel()
+        flux = np.asarray(tab.data["flux"], float).ravel()
+        flat = np.asarray(tab.data["flat"], float).ravel()
+        # Select wavelengths based on filter to avoid overlaps; these
+        # transitions are based on where one filter curve exceeds the other
+        keep = wave > 0  # Default select all
+        if ext == "F115W":
+            keep = wave <= 13040
+        if ext == "F150W":
+            keep = (wave > 13040) & (wave <= 17070)
+        if ext == "F200W":
+            keep = wave > 17070
+        with np.errstate(divide="ignore", invalid="ignore"):
+            wav = np.append(wav, wave[keep])
+            spec = np.append(spec, flux[keep] / flat[keep])
+    return wav, spec
+
+
+def read_spectrum(fname, fmt=None):
+    if not os.path.exists(fname):
+        sys.exit("File %s not found" % fname)
+    fmt = (fmt or "").lower()
+    fmt = ALIASES.get(fmt, fmt)
+
+    if fmt == "ascii":
+        return read_ascii(fname)
+    if fmt == "csv":
+        return read_csv(fname)
+
+    try:
+        hdul = fits.open(fname, memmap=False)
+    except Exception:
+        hdul = None
+
+    if hdul is None:  # Not FITS: csv or plain ascii
+        if fmt:
+            sys.exit("%s is not a FITS file, but format '%s' was requested"
+                     % (fname, fmt))
+        with open(fname) as fh:
+            for line in fh:
+                if line.strip() and not line.startswith("#"):
+                    if "," in line or fname.lower().endswith(".csv"):
+                        return read_csv(fname)
+                    return read_ascii(fname)
+        sys.exit("%s appears to be empty" % fname)
+
+    with hdul:
+        print("Reading file %s " % fname, end="")
+        instrume = str(hdul[0].header.get("INSTRUME", ""))
+        has_wcs = True  # tables always carry real wavelengths
+
+        if fmt in ("table", "sdss"):
+            wav, spec = read_table(first_table(hdul), instrume)
+        elif fmt == "xs":
+            print("as an XSHOOTER 1D table spectrum")
+            tab = hdul[1]
+            wav = np.asarray(tab.data["WAVE"], float).ravel() * 10
+            spec = np.asarray(tab.data["FLUX"], float).ravel()
+        elif fmt == "xs2":
+            wav, spec, has_wcs = read_image(hdul[1])
+            wav = wav * 10000.0
+        elif fmt == "outthere":
+            wav, spec = read_outthere(hdul)
+        elif fmt == "fits":
+            wav, spec, has_wcs = read_image(first_image(hdul))
+        elif fmt == "":  # Auto-detect from the HDU structure
+            if looks_outthere(hdul):
+                wav, spec = read_outthere(hdul)
+            else:
+                tab = first_table(hdul)
+                if tab is not None:
+                    wav, spec = read_table(tab, instrume)
+                else:
+                    img = first_image(hdul)
+                    if img is None:
+                        sys.exit("No spectrum found in FITS file")
+                    wav, spec, has_wcs = read_image(img)
+        else:
+            sys.exit("Unknown format '%s' (see pyredshift -h)" % fmt)
+
+    spec = np.asarray(spec, float)
+    spec[~np.isfinite(spec)] = np.nan  # NaNs plot as gaps downstream
+    return np.asarray(wav, float), spec, has_wcs
+
+
+def main():
+    ap = argparse.ArgumentParser(
+        prog="pyredshift",
+        description="Interactive redshifting of 1D spectra (port of pdlredshift).",
+        epilog="Formats: ascii csv fits sdss table (=jwst,jwst2,gabe,dja) "
+               "xs xs2 outthere.  Default is auto-detection.")
+    ap.add_argument("file", help="spectrum file (FITS, CSV or 2-column ascii)")
+    ap.add_argument("-f", "--format", default=None, metavar="FORMAT",
+                    help="force the input format instead of auto-detecting")
+    ap.add_argument("-z", "--redshift", type=float, default=None,
+                    help="initial redshift guess")
+    ap.add_argument("--dark", action="store_true",
+                    help="PGPLOT-style black background")
+    args = ap.parse_args()
+
+    wav, spec, has_wcs = read_spectrum(args.file, args.format)
+
+    if np.nanmax(wav) < 100 and has_wcs:
+        print("  Detected microns -> Angstroms")
+        wav = wav * 10000.0
+
+    z = redshift_module.redshift(wav, spec, args.redshift,
+                                 os.path.basename(args.file), dark=args.dark)
+    if z is not None:
+        print("Final redshift = %.6g" % z)
+
+
+if __name__ == "__main__":
+    main()

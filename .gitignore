@@ -1,0 +1,21 @@
+# python build/runtime artefacts
+__pycache__/
+*.pyc
+build/
+dist/
+*.egg-info/
+
+# macOS
+.DS_Store
+
+# session / scratch
+.claude/
+
+# personal dev material kept out of the public repo:
+# the Perl/PDL originals this was ported from, test spectra and outputs
+pdlredshift
+pdlredshift.lines
+Redshift.pm
+test_crosshair.py
+*.fits
+*.pdf

@@ -1,0 +1,6 @@
+# Minimal build-system declaration; the real metadata is in setup.py
+# (kept there because script-file installation with shebang rewriting
+# is a setup.py feature).
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"

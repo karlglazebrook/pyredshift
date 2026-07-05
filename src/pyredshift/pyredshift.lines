@@ -1,0 +1,78 @@
+# pyredshift.lines - emission/absorption line list, VACUUM wavelengths
+# Format:  wavelength_Angstroms, name, label, colour, comment
+# label defaults to name; colour is any matplotlib colour name (default red)
+# gold = strong/emission  magenta = ISM absorption  green/red = other
+911.8    , LyLim       , LyLim   , gold    , LyLim from AstroPhys Quant ***ALL LINES VACUUM***
+1025.72  , Lybeta      , Lyβ     , red     , From AQ
+1031.92  , OVI         , OVI     , red     , From Morton 1991 ApJS, ditto all following unless stated
+1215.67  , Lyalpha     , Lyα     , gold    , From AQ
+1240.1   , NV          , NV      , red     , Mean of doublet
+1260.42  , SiII        , SiII    , magenta , 
+1304.37  , SiII        , SiII    , magenta , 
+1335.1   , CII         , CII     , magenta , Mean of doublet
+1398.3   , SiIV        , SiIV    , magenta , Mean of doublet
+1526.71  , SiII        , SiII    , green   , 
+1548.2   , CIV         , CIV     , gold    , doublet
+1550.8   , CIV         , CIV     , gold    , doublet
+1608.45  , FeII        , FeII    , green   , 
+1640     , HeII        , HeII    , red     , Ref ???
+1670.79  , AlII        , AlII    , green   , 
+1909     , CIII]       , CIII]   , gold    , ref??
+2026.14  , ZnII        , ZnII    , red     , 
+2062.66  , ZnII        , ZnII    , red     , 
+2327.0   , CII         , CII     , gold    , Mean of quadruplet
+2344.21  , FeII        , FeII    , magenta , 
+2374.46  , FeII        , FeII    , magenta , 
+2382.77  , FeII        , FeII    , magenta , 
+2586.65  , FeII        , FeII    , magenta , 
+2600.17  , FeII        , FeII    , magenta , 
+2796.35  , MgII        , MgII    , magenta , 
+2803.53  , MgII        , MgII    , magenta , 
+2852.96  , MgI         , MgI     , magenta , 
+2967.76  , FeI         , FeI     , red     , 
+2968.01  , FeI         , FeI     , red     , 
+2984.44  , FeI         , FeI     , red     , 
+3021.52  , FeI         , FeI     , red     , 
+3346.79  , [NeV]       , [NeV]   , red     , See redshift-optical-air.lines for refs.
+3426.85  , [NeV]       , [NeV]   , red     , These have been converted to vacuum.
+3727.09  , [OII]       , [OII]   , gold    , 
+3729.88  , [OII]       , [OII]   , gold    , 
+3798.89  , Htheta      , Hθ      , red     , 
+3836.44  , Heta        , Hη      , red     , 
+3869.86  , [NeIII]     , [NeIII] , red     , 
+3890.15  , Hzeta       , Hζ      , red     , 
+3934.77  , K           , K       , magenta , 
+3969.59  , H           , H       , magenta , 
+4001.13  , 4000break   , D4000   , magenta , 4000A break (vacuum)
+4102.89  , Hdelta      , Hδ      , red     , 
+4305.57  , G           , G       , magenta , 
+4341.68  , Hgamma      , Hγ      , red     , 
+4862.68  , Hbeta       , Hβ      , gold    , 
+4960.30  , [OIII]      , [OIII]  , gold    , 
+5008.25  , [OIII]      , [OIII]  , gold    , 
+5175.44  , Mgb         , Mgb     , magenta , 
+5270.07  , FeI         , Fe5268  , magenta , FeI+CaI blend (Lick Fe5270); 5268 = classic air/centroid designation
+5891.58  , NaD         , NaD     , magenta , 
+5897.56  , NaD         , NaD     , magenta , 
+6549.87  , [NII]       , [NII]   , red     , 
+6564.61  , Halpha      , Hα      , gold    , 
+6585.21  , [NII]       , [NII]   , red     , 
+6718.27  , [SII]       , [SII]   , red     , 
+6732.64  , [SII]       , [SII]   , red     , 
+8500.36  , CaT         , CaT     , red     , 
+8544.44  , CaT         , CaT     , red     , 
+8664.52  , CaT         , CaT     , red     , 
+9071.11  , [SIII]      , [SIII]  , red     , 
+9533.23  , [SIII]      , [SIII]  , red     , 
+10052.13 , Pa-delta    , Paδ     , red     , 
+10833.31 , HeI         , HeI     , red     , 
+10941.09 , Pa-gama     , Paγ     , red     , 
+12570.21 , [FeII]      , [FeII]  , red     , 
+12821.58 , Pa-beta     , Paβ     , gold    , 
+16440.02 , [FeII]      , [FeII]  , gold    , 
+18179.07 , Br-epsilon  , Brε     , red     , 
+18756.13 , Pa-alpha    , Paα     , gold    , 
+19450.86 , Br-delta    , Brδ     , red     , 
+19575.60 , H2_1-0_S(3) , H₂      , gold    , 
+21218.31 , H2_1-0_S(1) , H₂      , gold    , 
+21661.19 , Br-gamma    , Brγ     , gold    , 
