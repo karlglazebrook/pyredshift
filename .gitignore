@@ -22,3 +22,5 @@ test_crosshair.py
 *.pdf
 .ipynb_checkpoints/
 .jupyter/
+.virtual_documents/
+anaconda_projects/
