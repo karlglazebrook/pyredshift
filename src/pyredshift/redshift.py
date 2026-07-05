@@ -35,7 +35,9 @@ V1.6 - Continuous cursor readout (pixel, wavelength obs/rest, flux) at
 V1.7 - Works from a Jupyter notebook: redshift(wave, flux) pops up the
        interactive window outside the notebook (inline backends cannot
        deliver events), and on quit the final view is embedded in the
-       cell and the original backend restored.
+       cell and the original backend restored.  Cleanup is guaranteed
+       even on Kernel->Interrupt, and headless/remote kernels are
+       detected up front (clear error instead of a Qt kernel crash).
 """
 
 import ctypes
@@ -540,6 +542,15 @@ def in_notebook():
         return False
 
 
+def display_available():
+    """Can a GUI window exist here?  Remote/headless kernels (JupyterHub,
+    ssh without X forwarding) cannot - and on Linux, Qt may hard-abort
+    the kernel rather than fail politely, so check first."""
+    if sys.platform == "darwin" or sys.platform.startswith("win"):
+        return True
+    return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+
+
 def ensure_gui_backend():
     """Under IPython with a non-interactive backend (inline, ipympl, Agg)
     switch to a native GUI backend so the window can pop up.  Returns the
@@ -554,6 +565,12 @@ def ensure_gui_backend():
     current = matplotlib.get_backend()
     if current.lower() in GUI_BACKENDS:
         return None
+    if not display_available():
+        raise RuntimeError(
+            "pyredshift opens its interactive window on the machine where "
+            "the kernel runs, but this kernel appears to be headless or "
+            "remote (no DISPLAY). Run it with a local kernel, or with X "
+            "forwarding.")
     for cand in ("MacOSX", "QtAgg", "TkAgg"):
         try:
             plt.switch_backend(cand)
@@ -955,10 +972,50 @@ def draw_plot():
 # ---------------------------------------------------------------------------
 # The main event: redshift($wav, $flux, $redshift, $label) -> z
 # ---------------------------------------------------------------------------
+final_png = None  # final view for the notebook cell, set on 'q'
+
+
 def redshift(w_in, f_in, zz=None, label_in="", dark=0):
     """Do the redshift thing - if zz is defined this is the first guess.
-    dark=1 gives a PGPLOT-style black background. Returns the final redshift."""
-    global fig, ax, cursor, message_artist, dark_mode
+    dark=1 gives a PGPLOT-style black background. Returns the final redshift.
+
+    This wrapper guarantees cleanup - window teardown and (in a notebook)
+    backend restore - however the session ends: 'q', window close,
+    Kernel->Interrupt, or an error."""
+    global final_png
+    final_png = None
+    prev_backend = ensure_gui_backend()
+    try:
+        return _redshift_session(w_in, f_in, zz, label_in, dark)
+    finally:
+        try:
+            if help_fig is not None and plt.fignum_exists(help_fig.number):
+                plt.close(help_fig)
+        except Exception:
+            pass
+        try:
+            if fig is not None and plt.fignum_exists(fig.number):
+                plt.close(fig)
+                # plt.close only SCHEDULES the window teardown - pump the
+                # GUI event loop briefly so it actually happens; nobody
+                # pumps it after we return (else a Qt window lingers,
+                # beachballing)
+                for _ in range(20):
+                    fig.canvas.flush_events()
+                    time.sleep(0.01)
+        except Exception:
+            pass
+        if prev_backend is not None:
+            try:
+                plt.switch_backend(prev_backend)
+            except Exception:
+                pass
+        if final_png is not None:
+            show_in_cell(final_png)
+
+
+def _redshift_session(w_in, f_in, zz, label_in, dark):
+    global fig, ax, cursor, message_artist, dark_mode, final_png
     global w, f, specgood, anybad, label, zshift, found
     global micron_mode, unit, med, xstart, xend, ylo, yhi
     global line_wav, line_col
@@ -1011,9 +1068,6 @@ def redshift(w_in, f_in, zz=None, label_in="", dark=0):
     ylo = -3 * med
     yhi = 10 * med
 
-    # From a notebook, pop the window up outside (see ensure_gui_backend)
-    prev_backend = ensure_gui_backend()
-
     fig, ax = plt.subplots(figsize=startup_figsize())
     try:
         fig.canvas.manager.set_window_title("pyredshift")
@@ -1058,26 +1112,9 @@ def redshift(w_in, f_in, zz=None, label_in="", dark=0):
             # Remember the window size for next time
             save_config(figsize=[float(v) for v in fig.get_size_inches()])
             # Leave a static image of the final view in the notebook cell
-            png = final_view_png() if in_notebook() else None
-            if help_fig is not None and plt.fignum_exists(help_fig.number):
-                plt.close(help_fig)
-            plt.close(fig)
-            # plt.close only SCHEDULES the window teardown - pump the GUI
-            # event loop briefly so it actually happens; nobody pumps it
-            # after we return (else a Qt window lingers, beachballing)
-            try:
-                for _ in range(20):
-                    fig.canvas.flush_events()
-                    time.sleep(0.01)
-            except Exception:
-                pass
-            if prev_backend is not None:
-                try:
-                    plt.switch_backend(prev_backend)
-                except Exception:
-                    pass
-            if png is not None:
-                show_in_cell(png)
+            # (the wrapper's cleanup displays it after the window is gone)
+            if in_notebook():
+                final_png = final_view_png()
             return zshift
 
         elif ch == "h":

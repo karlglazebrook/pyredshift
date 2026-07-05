@@ -78,7 +78,12 @@ cannot deliver events to it) and the cell blocks until you quit with
 `q`; the final annotated view is then embedded in the cell output and
 the redshift returned. Any non-interactive backend (e.g. `%matplotlib
 inline`) is switched to a GUI backend for the session and restored
-afterwards.
+afterwards — including if you interrupt the kernel mid-session.
+
+**Local kernels only**: the window opens on the machine where the
+kernel runs, so remote kernels (JupyterHub, cloud, ssh without X
+forwarding) cannot work — pyredshift detects this and says so rather
+than hanging or crashing the kernel.
 
 ## Interaction
 
