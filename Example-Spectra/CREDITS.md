@@ -16,9 +16,9 @@ National Laboratory with funding from the U.S. Department of Energy
 Office of Science; see https://data.desi.lbl.gov/doc/acknowledgments/
 for the full acknowledgment.
 
-## SDSS-QSO-z1.97.fits
+## SDSS-QSO-z2.50.fits
 
-Quasar at z = 1.9726 (RA 150.6551°, Dec +27.0157°), from **SDSS/BOSS
+Quasar at z = 2.5045 (RA 28.0788°, Dec +6.3244°), from **SDSS/BOSS
 Data Release 17** (SDSS Collaboration), repackaged into the standard
 SDSS coadd table format. Retrieved via **SPARCL** at NOIRLab's Astro
 Data Lab. Funding for SDSS has been provided by the Alfred P. Sloan
