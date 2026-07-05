@@ -772,8 +772,8 @@ def render(ax_, printing=False):
                  color=smooth_col, lw=0.9)
     if found:
         draw_labels(ax_, printing)
-        ax_.text(0.0, 1.03, "z = %-10.4f" % zshift, transform=ax_.transAxes,
-                 color=fg, fontsize=12)
+        ax_.text(0.0, 1.01, "z = %-10.4f" % zshift, transform=ax_.transAxes,
+                 va="bottom", color=fg, fontsize=12)
     if plot_template:
         ax_.plot(w_temp * (1 + zshift), f_temp * norm, color="red", lw=0.8)
     # Little marker along the bottom showing where the bad values are
