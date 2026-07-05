@@ -53,6 +53,10 @@ Wavelengths that look like microns are converted to Ångstroms; NaNs are
 treated as bad pixels and plot as gaps, with orange markers along the
 bottom of the frame.
 
+Real spectra to practice on are included in
+[Example-Spectra](Example-Spectra/) — the true redshifts are hidden in
+their FITS headers.
+
 ## Interaction
 
 Press `?` (or click the `?` button) for the full command reference — it
@@ -91,7 +95,8 @@ current directory, so a development checkout always runs its own code.
 ## Credits
 
 Karl Glazebrook, Swinburne University of Technology.
-Lineage: `redshift.f` (Fortran, 1990s) → `pdlredshift` (Perl/PDL) →
+
+Lineage: `redshift.f` (FIGARO/Fortran, ~1992) → `pdlredshift` (Perl/PDL) →
 `pyredshift`. Ported with the assistance of Claude (Anthropic).
 
 MIT license — see [LICENSE](LICENSE).

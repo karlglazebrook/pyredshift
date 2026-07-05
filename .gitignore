@@ -18,4 +18,5 @@ pdlredshift.lines
 Redshift.pm
 test_crosshair.py
 *.fits
+!Example-Spectra/*.fits
 *.pdf
