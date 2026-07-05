@@ -431,8 +431,9 @@ def line_menu(xd, yd):
     ih = bb.height * 1.55       # row height
     pad = bb.height * 0.55      # box padding
     tpad = bb.height * 0.7      # text indent
+    hh = ih * 0.85              # header row ("vacuum")
     wpx = bb.width + 2 * tpad
-    hpx = n * ih + 2 * pad
+    hpx = n * ih + hh + 2 * pad
 
     # Anchor at the click, kept on-canvas
     x0, y0 = ax.transData.transform((xd, yd))
@@ -453,8 +454,11 @@ def line_menu(xd, yd):
                    facecolor="#378ADD", alpha=0.35, zorder=51, visible=False)
     fig.add_artist(hi)
     texts = []
+    tx, ty = inv.transform((x0 + tpad, top - pad - 0.62 * hh))
+    texts.append(fig.text(tx, ty, "vacuum Å", fontsize=fs - 2, zorder=52,
+                          style="italic", color="#666666" if light else "#aaaaaa"))
     for k, (labtext, wrest) in enumerate(entries):
-        tx, ty = inv.transform((x0 + tpad, top - pad - k * ih - 0.74 * ih))
+        tx, ty = inv.transform((x0 + tpad, top - pad - hh - k * ih - 0.74 * ih))
         texts.append(fig.text(tx, ty, labtext, fontsize=fs, zorder=52,
                               family="monospace",
                               color="black" if light else "white"))
@@ -465,8 +469,9 @@ def line_menu(xd, yd):
     def index_at(ev):
         if ev.x is None or not (x0 <= ev.x <= x0 + wpx):
             return None
-        k = int((top - pad - ev.y) // ih)
-        return k if (0 <= k < n and top - pad - n * ih <= ev.y <= top - pad) \
+        k = int((top - pad - hh - ev.y) // ih)
+        return k if (0 <= k < n
+                     and top - pad - hh - n * ih <= ev.y <= top - pad - hh) \
             else None
 
     state = {"k": None, "picked": None}
@@ -478,8 +483,8 @@ def line_menu(xd, yd):
             if k is None:
                 hi.set_visible(False)
             else:
-                _, hy0 = inv.transform((0, top - pad - (k + 1) * ih))
-                _, hy1 = inv.transform((0, top - pad - k * ih))
+                _, hy0 = inv.transform((0, top - pad - hh - (k + 1) * ih))
+                _, hy1 = inv.transform((0, top - pad - hh - k * ih))
                 hi.set_bounds(fx0, hy0, fx1 - fx0, hy1 - hy0)
                 hi.set_visible(True)
             fig.canvas.draw_idle()
