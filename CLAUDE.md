@@ -119,3 +119,12 @@ scripted-session regression after touching the main loop.
   (gwcs/asdf/ndcube tree) must NOT become a hard dependency. Inherits
   the long tail of official survey loaders (MUSE, HST, 6dF...) while
   keeping our detection as the trusted first string.
+- Template library + selector button: bundle a small library of
+  template spectra (e.g. old elliptical, star-forming galaxy, QSO, A
+  star...) with the package, and add an on-canvas button (next to the
+  '?' button, same in-figure Button pattern) that pops up a chooser —
+  reuse the line_menu popup machinery — to pick which template the 't'
+  key overlays. Replaces the single hardwired TEMPLATE_NAME; keep the
+  $DATADIR / ~/Templates/Spectra search path for the user's own
+  templates, listed alongside the bundled ones. Templates need a
+  CREDITS entry like the example spectra.
