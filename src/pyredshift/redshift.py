@@ -29,6 +29,9 @@ V1.4 - Help is now pyredshift-help.html, opened themed in the browser
        (the native Mac toolbar cannot take custom buttons).
 V1.5 - Renamed: the module is now pyredshift.redshift (the kg namespace
        is retired for distribution).
+V1.6 - Continuous cursor readout (pixel, wavelength obs/rest, flux) at
+       the bottom right of the window; EW/flux measurements are also
+       shown in the window message area.
 """
 
 import ctypes
@@ -52,6 +55,7 @@ if "MPLBACKEND" not in os.environ:
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
+from matplotlib.transforms import Bbox
 from matplotlib.widgets import Button, Cursor
 
 # Take all the keys back from matplotlib's default bindings (k, l, s, g, o, q...)
@@ -66,7 +70,7 @@ try:
 except AttributeError:
     pass
 
-__version__ = "1.5"
+__version__ = "1.6"
 
 C_LIGHT = 2.99792458e8  # m/s
 
@@ -381,6 +385,53 @@ def pgband(allow_drag=False):
 def refresh():
     fig.canvas.draw_idle()
     fig.canvas.flush_events()
+
+
+# ---------------------------------------------------------------------------
+# Continuous cursor readout - bottom right corner of the window.
+# The text is an animated artist blitted over a snapshot of its corner of
+# the figure, so tracking the mouse costs two cheap blits per move, not a
+# full redraw (same trick as the crosshair).
+# ---------------------------------------------------------------------------
+readout_artist = None
+readout_bg = None      # (background, bbox) pair for blitting
+
+
+def make_readout():
+    global readout_artist, readout_bg
+    readout_artist = fig.text(0.995, 0.012, "", ha="right", va="bottom",
+                              family="monospace", fontsize=8, animated=True,
+                              color="white" if dark_mode else "black")
+    readout_bg = None
+    fig.canvas.mpl_connect("draw_event", snapshot_readout)
+    fig.canvas.mpl_connect("motion_notify_event", update_readout)
+
+
+def snapshot_readout(ev):
+    """Cache the bottom-right corner after every full draw (the readout
+    artist is animated, so it is never part of the cached image)."""
+    global readout_bg
+    W, H = fig.bbox.width, fig.bbox.height
+    box = Bbox([[0.40 * W, 0.0], [W, 0.055 * H]])
+    readout_bg = (fig.canvas.copy_from_bbox(box), box)
+
+
+def update_readout(ev):
+    if readout_artist is None or readout_bg is None or f is None:
+        return
+    if ev.inaxes is ax and ev.xdata is not None:
+        i = int(np.argmin(np.abs(w - ev.xdata)))
+        wfmt = "%.5f" if micron_mode else "%.2f"
+        rest = wfmt % (ev.xdata / (1 + zshift)) if found else "-"
+        text = ("pix %d   λ %s   rest %s   flux %.4g   y %.4g"
+                % (i, wfmt % ev.xdata, rest, f[i], ev.ydata))
+    else:
+        text = ""
+    readout_artist.set_text(text)
+    bg, box = readout_bg
+    fig.canvas.restore_region(bg)
+    fig.draw_artist(readout_artist)
+    fig.canvas.blit(box)
 
 
 # ---------------------------------------------------------------------------
@@ -874,6 +925,7 @@ def redshift(w_in, f_in, zz=None, label_in="", dark=0):
         pass
     set_margins(fig)
     make_help_button()
+    make_readout()
 
     def on_resize(ev):
         set_margins(fig)
@@ -1096,6 +1148,9 @@ def redshift(w_in, f_in, zz=None, label_in="", dark=0):
             print("Measured Rest EW = %g +- %g" % (EW, dEW))
             print("Measured Flux = %g +- %g" % (lineflux, dlineflux))
             print("Wavelength range %g to %g" % (xv1, xv2))
+            win_message("Rest EW = %.4g ± %.3g    Line flux = %.4g ± %.3g    "
+                        "(%.6g–%.6g %s)"
+                        % (EW, dEW, lineflux, dlineflux, xv1, xv2, unit))
 
         ############### Redshift guessing ###############
 
