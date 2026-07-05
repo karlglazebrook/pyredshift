@@ -38,6 +38,8 @@ V1.7 - Works from a Jupyter notebook: redshift(wave, flux) pops up the
        cell and the original backend restored.  Cleanup is guaranteed
        even on Kernel->Interrupt, and headless/remote kernels are
        detected up front (clear error instead of a Qt kernel crash).
+V1.8 - Right-click pops up the quick line list as a menu: pick a line
+       to set the redshift at the clicked position (same as ESC+key).
 """
 
 import ctypes
@@ -77,7 +79,7 @@ try:
 except AttributeError:
     pass
 
-__version__ = "1.7"
+__version__ = "1.8"
 
 C_LIGHT = 2.99792458e8  # m/s
 
@@ -337,6 +339,9 @@ def pgband(allow_drag=False):
     def on_press(ev):
         if ev.inaxes is not ax:
             return  # clicks elsewhere (margins, the ? button) aren't cursor reads
+        if allow_drag and ev.button == 3:
+            done(ev.xdata, ev.ydata, "menu")  # right-click: quick line menu
+            return
         if allow_drag and ev.button == 1 and not toolbar_mode():
             drag["xpx"], drag["ypx"] = ev.x, ev.y     # pixels, for threshold
             drag["x0"], drag["y0"] = ev.xdata, ev.ydata
@@ -392,6 +397,99 @@ def pgband(allow_drag=False):
 def refresh():
     fig.canvas.draw_idle()
     fig.canvas.flush_events()
+
+
+# ---------------------------------------------------------------------------
+# Right-click quick-line menu - the ESC shortcut list as a popup, drawn
+# with matplotlib artists so it works on any backend
+# ---------------------------------------------------------------------------
+def line_menu(xd, yd):
+    """Pop up the quick line list at the cursor (right-click).  Returns
+    the chosen rest wavelength (in current wavelength units), or None if
+    cancelled (click elsewhere, or any key)."""
+    # Entries from the ESC shortcut list, labelled from the line list
+    entries = []
+    for key, wav in sorted(shortcuts.items(), key=lambda kv: kv[1]):
+        wrest = wav / 10000.0 if micron_mode else float(wav)
+        i = int(np.argmin(np.abs(line_wav - wrest)))
+        lab = line_label[i] if line_label[i] != "IGNORE" else str(wav)
+        entries.append(("%s %d" % (lab, wav), wrest))
+    n = len(entries)
+
+    # Geometry in display pixels, anchored at the click, kept on-canvas
+    ih, pad, wpx = 20.0, 6.0, 118.0
+    hpx = n * ih + 2 * pad
+    x0, y0 = ax.transData.transform((xd, yd))
+    if x0 + wpx > fig.bbox.width:
+        x0 -= wpx
+    top = min(max(y0, hpx), fig.bbox.height)
+
+    inv = fig.transFigure.inverted()
+    fx0, fbot = inv.transform((x0, top - hpx))
+    fx1, ftop = inv.transform((x0 + wpx, top))
+    light = not dark_mode
+    box = Rectangle((fx0, fbot), fx1 - fx0, ftop - fbot,
+                    transform=fig.transFigure, zorder=50, lw=1,
+                    facecolor="#fffdf2" if light else "#222222",
+                    edgecolor="black" if light else "#aaaaaa")
+    fig.add_artist(box)
+    hi = Rectangle((fx0, fbot), fx1 - fx0, 0, transform=fig.transFigure,
+                   facecolor="#378ADD", alpha=0.35, zorder=51, visible=False)
+    fig.add_artist(hi)
+    texts = []
+    for k, (labtext, wrest) in enumerate(entries):
+        tx, ty = inv.transform((x0 + 8, top - pad - k * ih - 0.72 * ih))
+        texts.append(fig.text(tx, ty, labtext, fontsize=9, zorder=52,
+                              family="monospace",
+                              color="black" if light else "white"))
+    if cursor is not None:
+        cursor.active = False  # freeze the crosshair on the anchor point
+    refresh()
+
+    def index_at(ev):
+        if ev.x is None or not (x0 <= ev.x <= x0 + wpx):
+            return None
+        k = int((top - pad - ev.y) // ih)
+        return k if (0 <= k < n and top - pad - n * ih <= ev.y <= top - pad) \
+            else None
+
+    state = {"k": None, "picked": None}
+
+    def on_move(ev):
+        k = index_at(ev)
+        if k != state["k"]:
+            state["k"] = k
+            if k is None:
+                hi.set_visible(False)
+            else:
+                _, hy0 = inv.transform((0, top - pad - (k + 1) * ih))
+                _, hy1 = inv.transform((0, top - pad - k * ih))
+                hi.set_bounds(fx0, hy0, fx1 - fx0, hy1 - hy0)
+                hi.set_visible(True)
+            fig.canvas.draw_idle()
+
+    def on_click(ev):
+        state["picked"] = index_at(ev)
+        fig.canvas.stop_event_loop()
+
+    def on_key(ev):
+        state["picked"] = None
+        fig.canvas.stop_event_loop()
+
+    cids = [fig.canvas.mpl_connect("motion_notify_event", on_move),
+            fig.canvas.mpl_connect("button_press_event", on_click),
+            fig.canvas.mpl_connect("key_press_event", on_key)]
+    fig.canvas.start_event_loop()
+    for cid in cids:
+        fig.canvas.mpl_disconnect(cid)
+    box.remove()
+    hi.remove()
+    for t in texts:
+        t.remove()
+    if cursor is not None:
+        cursor.active = True
+    refresh()
+    return entries[state["picked"]][1] if state["picked"] is not None else None
 
 
 # ---------------------------------------------------------------------------
@@ -1338,6 +1436,15 @@ def _redshift_session(w_in, f_in, zz, label_in, dark):
             print("Redshift = %10.4f" % zshift)
             found = 1
             redraw = 1
+
+        elif ch == "menu":  # right-click: pick a line from the quick list
+            picked = line_menu(xv, yv)
+            if picked is not None:
+                i = int(np.argmin(np.abs(picked - line_wav)))
+                zshift = xv / line_wav[i] - 1
+                print("Redshift = %10.4f" % zshift)
+                found = 1
+                redraw = 1
 
         elif ch == "=":
             zshift = get_number_win("Enter redshift", zshift)

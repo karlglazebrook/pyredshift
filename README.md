@@ -93,7 +93,8 @@ short guide in separate tabs. The essentials:
 
 - **Identify a line**: put the crosshair on a feature and press `ESC`
   followed by a shortcut key (`a` = Hα, `b` = Hβ, `l` = Lyα, `o` = [OII],
-  `c` = CIV ...), or `g` to type any rest wavelength. Press `ESC ESC` on a
+  `c` = CIV ...) — or right-click the feature and pick the line from the
+  popup menu, or `g` to type any rest wavelength. Press `ESC ESC` on a
   sharp line to refine the redshift; `=` enters a redshift directly.
 - **Navigate**: drag the mouse for a rubber-band zoom (a purely horizontal
   drag zooms X only), `z`/`u` and `i`/`o` zoom about the cursor, `[` `]`
