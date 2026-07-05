@@ -42,6 +42,7 @@ import ctypes
 import json
 import os
 import sys
+import time
 import warnings
 from html.parser import HTMLParser
 
@@ -1061,6 +1062,15 @@ def redshift(w_in, f_in, zz=None, label_in="", dark=0):
             if help_fig is not None and plt.fignum_exists(help_fig.number):
                 plt.close(help_fig)
             plt.close(fig)
+            # plt.close only SCHEDULES the window teardown - pump the GUI
+            # event loop briefly so it actually happens; nobody pumps it
+            # after we return (else a Qt window lingers, beachballing)
+            try:
+                for _ in range(20):
+                    fig.canvas.flush_events()
+                    time.sleep(0.01)
+            except Exception:
+                pass
             if prev_backend is not None:
                 try:
                     plt.switch_backend(prev_backend)
