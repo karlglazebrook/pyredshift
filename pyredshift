@@ -274,14 +274,17 @@ def main():
                     help="initial redshift guess")
     ap.add_argument("--retro", action="store_true",
                     help="retro PGPLOT-style black background")
+    ap.add_argument("--microns", action="store_true",
+                    help="keep micron wavelengths (micron-mode display) "
+                         "instead of converting to Angstroms")
     ap.add_argument("--dark", dest="retro", action="store_true",
                     help=argparse.SUPPRESS)  # deprecated alias for --retro
     args = ap.parse_args()
 
     wav, spec, has_wcs = read_spectrum(args.file, args.format)
 
-    if np.nanmax(wav) < 100 and has_wcs:
-        print("  Detected microns -> Angstroms")
+    if np.nanmax(wav) < 100 and has_wcs and not args.microns:
+        print("  Detected microns -> Angstroms  (--microns to keep)")
         wav = wav * 10000.0
 
     z = redshift_module.redshift(wav, spec, args.redshift,

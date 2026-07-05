@@ -39,6 +39,7 @@ pyredshift spectrum.fits              # format auto-detected
 pyredshift spectrum.fits -f sdss      # force a format
 pyredshift spectrum.fits -z 2.19      # start from a known redshift
 pyredshift spectrum.fits --retro      # retro PGPLOT-style black background
+pyredshift spectrum.fits --microns    # keep micron wavelengths (no A conversion)
 ```
 
 The file format is auto-detected by inspecting the FITS structure and
