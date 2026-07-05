@@ -32,6 +32,10 @@ V1.5 - Renamed: the module is now pyredshift.redshift (the kg namespace
 V1.6 - Continuous cursor readout (pixel, wavelength obs/rest, flux) at
        the bottom right of the window; EW/flux measurements are also
        shown in the window message area.
+V1.7 - Works from a Jupyter notebook: redshift(wave, flux) pops up the
+       interactive window outside the notebook (inline backends cannot
+       deliver events), and on quit the final view is embedded in the
+       cell and the original backend restored.
 """
 
 import ctypes
@@ -70,7 +74,7 @@ try:
 except AttributeError:
     pass
 
-__version__ = "1.6"
+__version__ = "1.7"
 
 C_LIGHT = 2.99792458e8  # m/s
 
@@ -509,6 +513,79 @@ def nint(x):
 
 
 # ---------------------------------------------------------------------------
+# Jupyter / IPython support - the interactive window opens OUTSIDE the
+# notebook (inline backends cannot deliver mouse/key events to a blocking
+# loop), and the final view is embedded in the cell on quit.
+# ---------------------------------------------------------------------------
+GUI_BACKENDS = ("macosx", "qtagg", "qt5agg", "tkagg",
+                "gtk3agg", "gtk4agg", "wxagg")
+
+
+def in_ipython():
+    try:
+        from IPython import get_ipython
+        return get_ipython() is not None
+    except ImportError:
+        return False
+
+
+def in_notebook():
+    """True in a Jupyter kernel (as opposed to terminal IPython)."""
+    try:
+        from IPython import get_ipython
+        ip = get_ipython()
+        return ip is not None and type(ip).__name__ == "ZMQInteractiveShell"
+    except ImportError:
+        return False
+
+
+def ensure_gui_backend():
+    """Under IPython with a non-interactive backend (inline, ipympl, Agg)
+    switch to a native GUI backend so the window can pop up.  Returns the
+    previous backend name if we switched (restored on quit), else None."""
+    if not in_ipython() or "MPLBACKEND" in os.environ:
+        return None
+    current = matplotlib.get_backend()
+    if current.lower() in GUI_BACKENDS:
+        return None
+    for cand in ("MacOSX", "QtAgg", "TkAgg"):
+        try:
+            plt.switch_backend(cand)
+        except Exception:
+            continue
+        print("Opening the interactive window outside the notebook "
+              "(backend %s -> %s); press q there to return." % (current, cand))
+        return current
+    print("WARNING: backend %s is not interactive and no GUI backend could "
+          "be loaded - the window will not respond." % current)
+    return None
+
+
+def final_view_png():
+    """Render the current view to PNG bytes, independent of the live
+    backend (used to embed the final plot in the notebook cell)."""
+    import io
+    from matplotlib.backends.backend_agg import FigureCanvasAgg
+    from matplotlib.figure import Figure
+    pfig = Figure(figsize=fig.get_size_inches())
+    FigureCanvasAgg(pfig)
+    pax = pfig.add_subplot()
+    set_margins(pfig)
+    render(pax)
+    buf = io.BytesIO()
+    pfig.savefig(buf, format="png", dpi=110, facecolor=pfig.get_facecolor())
+    return buf.getvalue()
+
+
+def show_in_cell(png):
+    try:
+        from IPython.display import display, Image
+    except ImportError:
+        return
+    display(Image(png))
+
+
+# ---------------------------------------------------------------------------
 # Config file - remembers the window size between runs
 # ---------------------------------------------------------------------------
 def load_config():
@@ -928,6 +1005,9 @@ def redshift(w_in, f_in, zz=None, label_in="", dark=0):
     ylo = -3 * med
     yhi = 10 * med
 
+    # From a notebook, pop the window up outside (see ensure_gui_backend)
+    prev_backend = ensure_gui_backend()
+
     fig, ax = plt.subplots(figsize=startup_figsize())
     try:
         fig.canvas.manager.set_window_title("pyredshift")
@@ -971,9 +1051,18 @@ def redshift(w_in, f_in, zz=None, label_in="", dark=0):
         if ch == "q":
             # Remember the window size for next time
             save_config(figsize=[float(v) for v in fig.get_size_inches()])
+            # Leave a static image of the final view in the notebook cell
+            png = final_view_png() if in_notebook() else None
             if help_fig is not None and plt.fignum_exists(help_fig.number):
                 plt.close(help_fig)
             plt.close(fig)
+            if prev_backend is not None:
+                try:
+                    plt.switch_backend(prev_backend)
+                except Exception:
+                    pass
+            if png is not None:
+                show_in_cell(png)
             return zshift
 
         elif ch == "h":

@@ -63,6 +63,23 @@ Real spectra to practice on are included in
 [Example-Spectra](Example-Spectra/) — the true redshifts are hidden in
 their FITS headers.
 
+### From a Jupyter notebook
+
+The interactive module also works straight from a notebook, given numpy
+arrays:
+
+```python
+from pyredshift import redshift as redshift_module
+z = redshift_module.redshift(wave, flux)
+```
+
+The interactive window opens *outside* the notebook (inline backends
+cannot deliver events to it) and the cell blocks until you quit with
+`q`; the final annotated view is then embedded in the cell output and
+the redshift returned. Any non-interactive backend (e.g. `%matplotlib
+inline`) is switched to a GUI backend for the session and restored
+afterwards.
+
 ## Interaction
 
 Press `?` (or click the `?` button) for the full command reference — it
