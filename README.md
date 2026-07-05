@@ -105,7 +105,8 @@ short guide in separate tabs. The essentials:
 - **Quit**: `q` — the final redshift is reported on the terminal.
 
 Line identifications come from `pyredshift.lines` (CSV: wavelength, name,
-label, matplotlib colour, comment — all vacuum wavelengths), installed
+label, matplotlib colour, comment — all vacuum wavelengths; a colour may
+be a `light/dark` pair for the two backgrounds), installed
 alongside the module and easy to customise. The window size and aspect
 ratio are remembered between runs in `~/.pyredshift.json`. A template
 spectrum can be overlaid with `t` (searched for in `$DATADIR`,

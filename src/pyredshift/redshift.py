@@ -40,6 +40,8 @@ V1.7 - Works from a Jupyter notebook: redshift(wave, flux) pops up the
        detected up front (clear error instead of a Qt kernel crash).
 V1.8 - Right-click pops up the quick line list as a menu: pick a line
        to set the redshift at the clicked position (same as ESC+key).
+     - pyredshift.lines colours may be 'light/dark' pairs; the strong
+       lines are now goldenrod on white, yellow on the retro background.
 """
 
 import ctypes
@@ -96,6 +98,12 @@ DARK_REMAP = {"gold": "yellow", "tab:blue": "dodgerblue", "green": "lime",
 
 
 def theme_col(c, light):
+    """Resolve a colour spec for the current mode.  A spec is a single
+    matplotlib colour (dark mode gets a brightness remap), or
+    'lightcolour/darkcolour' giving each mode its own colour."""
+    if "/" in c:
+        lc, dc = c.split("/", 1)
+        return lc.strip() if light else dc.strip()
     return c if light else DARK_REMAP.get(c, c)
 
 # Quick line guess shortcuts (rest wavelengths in Angstroms)
