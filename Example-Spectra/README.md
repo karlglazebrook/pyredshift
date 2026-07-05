@@ -26,7 +26,6 @@ Hints:
   Lyman-α break at ~1 µm: try `ESC O` on the strongest line ([OIII] 5007),
   then Hβ, Hα and [OII] should all click into place.
 
-Credits: DESI Data Release 1 (DESI Collaboration) and SDSS/BOSS DR17
-(SDSS Collaboration), both retrieved via the SPARCL service at NOIRLab's
-Astro Data Lab; JWST/NIRSpec spectrum from the DAWN JWST Archive (DJA,
-msaexp reduction v4.4), original data from the CAPERS program (PID 6368).
+These are real survey data — see [CREDITS.md](CREDITS.md) for full
+credits and acknowledgments (DESI DR1, SDSS/BOSS DR17, SPARCL/NOIRLab,
+and the DAWN JWST Archive / CAPERS).
