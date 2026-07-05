@@ -500,6 +500,7 @@ def get_number_win(prompt, default):
         return float(s)
     except ValueError:
         print("Could not parse '%s', using %s" % (s, default))
+        win_message("Could not parse '%s', using %s" % (s, default))
         return float(default)
 
 
@@ -985,7 +986,7 @@ def redshift(w_in, f_in, zz=None, label_in="", dark=0):
 
         # Keys below need a cursor position inside the axes
         elif xv is None and ch not in ("d", "w", "=", "r", "p", "b", "s", "t", "_"):
-            print("Cursor is outside the plot axes")
+            win_message("Cursor is outside the plot axes")
 
         ############### Pan/zoom stuff ###############
 
@@ -1014,20 +1015,23 @@ def redshift(w_in, f_in, zz=None, label_in="", dark=0):
             xend = xv + dx / 2.0
             redraw = 1
         elif ch == "x":
-            print("Move cursor to other end of X range and press any key...")
+            win_message("Move cursor to other end of X range and press any key...")
             newx, newy, ch2 = pgband()
+            win_message("")
             if newx is not None:
                 xstart, xend = sorted((xv, newx))
             redraw = 1
         elif ch == "y":
-            print("Move cursor to other end of Y range and press any key...")
+            win_message("Move cursor to other end of Y range and press any key...")
             newx, newy, ch2 = pgband()
+            win_message("")
             if newy is not None:
                 ylo, yhi = sorted((yv, newy))
             redraw = 1
         elif ch == "e":
-            print("Move cursor to other end of region and press any key...")
+            win_message("Move cursor to other end of region and press any key...")
             newx, newy, ch2 = pgband()
+            win_message("")
             if newx is not None:
                 xstart, xend = sorted((xv, newx))
                 ylo, yhi = sorted((yv, newy))
@@ -1092,7 +1096,7 @@ def redshift(w_in, f_in, zz=None, label_in="", dark=0):
                     for _ in range(10):  # Iterate
                         good = mask2 > 0
                         if good.sum() < order + 2:
-                            print("Too few pixels left for the fit!")
+                            win_message("Too few pixels left for the fit!")
                             break
                         coef = np.polyfit(w[good], f[good], order)
                         f_cuum = np.polyval(coef, w)
@@ -1106,16 +1110,18 @@ def redshift(w_in, f_in, zz=None, label_in="", dark=0):
                     ax.plot(w, f_cuum, lw=1.0,
                             color=theme_col("darkorange", not dark_mode))
                     refresh()
-                    ok = get_input_win("Fit acceptable?", "yes")
+                    ok = get_input_win(
+                        "RMS = %.4g, %.0f%% clipped - fit acceptable?"
+                        % (RMS, pc), "yes")
                     if ok.strip().lower().startswith("y"):
                         break
                 got_cuum = 1
             else:
-                print("No continuum defined")
+                win_message("No continuum defined")
 
         elif ch == "m":  # EW
             if f_cuum is None:
-                print("Need to define continuum first")
+                win_message("Need to define continuum first")
                 continue
             xv1 = xv
             ewcol = theme_col("green", not dark_mode)
@@ -1174,8 +1180,9 @@ def redshift(w_in, f_in, zz=None, label_in="", dark=0):
             redraw = 1
 
         elif ch in ("escape", "`"):
-            print("Enter shortcut key for line at position...")
+            win_message("Enter shortcut key for line at position...")
             xv, yv, ch2 = pgband()
+            win_message("")
             if xv is None:
                 continue
             if ch2 in ("escape", "`"):
@@ -1183,7 +1190,7 @@ def redshift(w_in, f_in, zz=None, label_in="", dark=0):
             elif ch2 in shortcuts:
                 wavelength = shortcuts[ch2] / (10000.0 if micron_mode else 1.0)
             else:
-                print("No shortcut for key '%s'" % ch2)
+                win_message("No shortcut for key '%s'" % ch2)
                 continue
             i = int(np.argmin(np.abs(wavelength - line_wav)))  # Find nearest line
             zshift = xv / line_wav[i] - 1
@@ -1249,8 +1256,9 @@ def redshift(w_in, f_in, zz=None, label_in="", dark=0):
             got_cuum = got_bin = got_smooth = 0
 
         elif ch == "B":
-            print("Move cursor to other end of X range and press any key...")
+            win_message("Move cursor to other end of X range and press any key...")
             newx, newy, ch2 = pgband()
+            win_message("")
             if newx is None:
                 continue
             x1, x2 = sorted((xv, newx))
@@ -1265,6 +1273,7 @@ def redshift(w_in, f_in, zz=None, label_in="", dark=0):
             pfig.savefig(outfile, facecolor="white")
             plt.close(pfig)
             print("Printed plot to %s" % outfile)
+            win_message("Printed plot to %s" % outfile)
 
         elif ch == "t":  # Read a template and plot it quickly for comparison
             print("Plotting %s template..." % TEMPLATE_NAME)
@@ -1272,6 +1281,7 @@ def redshift(w_in, f_in, zz=None, label_in="", dark=0):
                 w_temp, f_temp = get_template(TEMPLATE_NAME)
             except FileNotFoundError as err:
                 print(err)
+                win_message(str(err))
                 continue
             # Highly empirical robust normalisation scheme!
             # first define middle third of the displayed wavelength range
@@ -1282,7 +1292,7 @@ def redshift(w_in, f_in, zz=None, label_in="", dark=0):
             wt = w_temp * (1 + zshift)
             selt = f_temp[(wt > x1) & (wt < x2)]
             if sel.size == 0 or selt.size == 0:
-                print("Template does not overlap the displayed wavelength range")
+                win_message("Template does not overlap the displayed wavelength range")
                 continue
             norm = float(np.nanmedian(sel)) / float(np.nanmedian(selt))
             plot_template = 1
