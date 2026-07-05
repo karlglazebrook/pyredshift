@@ -423,8 +423,8 @@ def update_readout(ev):
         i = int(np.argmin(np.abs(w - ev.xdata)))
         wfmt = "%.5f" if micron_mode else "%.2f"
         rest = wfmt % (ev.xdata / (1 + zshift)) if found else "-"
-        text = ("pix %d   λ %s   rest %s   flux %.4g   y %.4g"
-                % (i, wfmt % ev.xdata, rest, f[i], ev.ydata))
+        text = ("pix %d   y %.4g   λ %s   rest %s   flux %.4g"
+                % (i, ev.ydata, wfmt % ev.xdata, rest, f[i]))
     else:
         text = ""
     readout_artist.set_text(text)
@@ -889,6 +889,7 @@ def redshift(w_in, f_in, zz=None, label_in="", dark=0):
     bin_off = smooth_off = 0.0
     binfac = 3
     fwhm = 3
+    fluxtype = 0  # data units for 'm', asked once on first use
     zoomx = zoomy = 2.0
 
     if zz is None or zz == "":
@@ -1124,7 +1125,7 @@ def redshift(w_in, f_in, zz=None, label_in="", dark=0):
             dw = np.roll(w, -1) - w
             dw[-1] = 0
             idx = (w >= xv1) & (w <= xv2) & specgood & np.isfinite(f_cuum)
-            fluxtype = 0
+            # Only ask for the data units once per session
             while fluxtype < 1 or fluxtype > 3:
                 fluxtype = int(get_number_win(
                     "Are the data units (1) Counts (2) Flambda /A or (3) Fnu /Hz ?", 2))
