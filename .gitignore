@@ -18,6 +18,7 @@ pdlredshift.lines
 Redshift.pm
 test_crosshair.py
 *.fits
+/QSO-z2.50-microns.dat
 !Example-Spectra/*.fits
 *.pdf
 .ipynb_checkpoints/

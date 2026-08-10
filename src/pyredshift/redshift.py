@@ -44,6 +44,11 @@ V1.8 - Right-click pops up the quick line list as a menu: pick a line
        lines are now goldenrod on white, yellow on the retro background.
 V1.9 - First PyPI release. --microns flag (keeps micron wavelengths so
        micron-mode display is reachable from files); packaging metadata.
+V1.10 - The cursor works over the whole window, as PGPLOT's did: keys and
+       clicks outside the axes box extrapolate their coordinates (so
+       'x'/'y'/'e' can be pressed just outside the axis, pdlredshift
+       style), the crosshair and the readout follow into the margins,
+       and rubber-band drags may extend past the plot edge.
 """
 
 import ctypes
@@ -83,7 +88,7 @@ try:
 except AttributeError:
     pass
 
-__version__ = "1.9"
+__version__ = "1.10"
 
 C_LIGHT = 2.99792458e8  # m/s
 
@@ -260,6 +265,19 @@ norm = 1.0
 # ---------------------------------------------------------------------------
 # Cursor and blocking input - the pgband() replacement
 # ---------------------------------------------------------------------------
+def surface_xy(ax_, ev):
+    """Data coords for an event anywhere on the figure surface.
+
+    PGPLOT's cursor was not confined to the axes box - outside it (margins,
+    over widgets) extrapolate from the pixel position."""
+    if ev.inaxes is ax_:
+        return ev.xdata, ev.ydata
+    if ev.x is None or ev.y is None:
+        return None, None
+    xd, yd = ax_.transData.inverted().transform((ev.x, ev.y))
+    return float(xd), float(yd)
+
+
 class StickyCursor(Cursor):
     """Cursor that survives full canvas repaints and toolbar pan/zoom.
 
@@ -268,19 +286,37 @@ class StickyCursor(Cursor):
     after every repaint.  Also reimplements onmove() without the base class's
     widgetlock check, so the crosshair stays live while the toolbar pan/zoom
     mode is switched on.
+
+    The crosshair spans the whole window like PGPLOT's, not just the axes
+    box, so the background snapshot and blit cover the full figure - and the
+    cursor re-draws the (animated) readout text as part of its pass, since a
+    full-figure restore would otherwise erase it.
     """
 
     def __init__(self, ax_, **kwargs):
         self._last_event = None
         super().__init__(ax_, **kwargs)
+        self.linev.set_clip_on(False)   # let the crosshair escape the box
+        self.lineh.set_clip_on(False)
         self.connect_event("draw_event", self._redraw)
+
+    def clear(self, event):
+        # As Cursor.clear (mpl 3.9), but snapshot the whole figure: the
+        # crosshair now extends into the margins. Runs on draw_event while
+        # animated artists are excluded, so the snapshot is clean.
+        if self.ignore(event) or self.canvas.is_saving():
+            return
+        if self.useblit:
+            self.background = self.canvas.copy_from_bbox(self.canvas.figure.bbox)
 
     def onmove(self, event):
         # Copy of Cursor.onmove from matplotlib 3.9, minus the widgetlock
-        # check (version sensitive - revisit if matplotlib is upgraded)
+        # check (version sensitive - revisit if matplotlib is upgraded),
+        # with whole-window coords and full-figure blitting.
         if self.ignore(event):
             return
-        if not self.ax.contains(event)[0]:
+        xdata, ydata = surface_xy(self.ax, event)
+        if xdata is None:
             self._last_event = None  # or _redraw() would resurrect it
             self.linev.set_visible(False)
             self.lineh.set_visible(False)
@@ -290,10 +326,16 @@ class StickyCursor(Cursor):
             return
         self._last_event = event
         self.needclear = True
-        xdata, ydata = self._get_data_coords(event)
-        self.linev.set_xdata((xdata, xdata))
+        # Span the full window: line extents are in axes-fraction coords
+        figbb = self.canvas.figure.bbox
+        axbb = self.ax.bbox
+        self.linev.set_data((xdata, xdata),
+                            ((figbb.y0 - axbb.y0) / axbb.height,
+                             (figbb.y1 - axbb.y0) / axbb.height))
         self.linev.set_visible(self.visible and self.vertOn)
-        self.lineh.set_ydata((ydata, ydata))
+        self.lineh.set_data(((figbb.x0 - axbb.x0) / axbb.width,
+                             (figbb.x1 - axbb.x0) / axbb.width),
+                            (ydata, ydata))
         self.lineh.set_visible(self.visible and self.horizOn)
         if not (self.visible and (self.vertOn or self.horizOn)):
             return
@@ -303,13 +345,21 @@ class StickyCursor(Cursor):
                 self.canvas.restore_region(self.background)
             self.ax.draw_artist(self.linev)
             self.ax.draw_artist(self.lineh)
-            self.canvas.blit(self.ax.bbox)
+            if readout_artist is not None:
+                set_readout_text(event)          # restore wiped the corner -
+                fig.draw_artist(readout_artist)  # redraw with fresh values
+            self.canvas.blit(figbb)
         else:
             self.canvas.draw_idle()
 
     def _redraw(self, event):
-        if self._last_event is not None:
+        if self.active and self._last_event is not None:
             self.onmove(self._last_event)
+        elif readout_lastev is not None:
+            # No crosshair to re-draw (fresh cursor after draw_plot, or
+            # deactivated while the line menu is up) - the readout must
+            # still survive the repaint
+            update_readout(readout_lastev)
 
 
 def normkey(ch):
@@ -324,6 +374,11 @@ def pgband(allow_drag=False):
 
     Mouse button gives ch='A', as PGPLOT did. Returns ch='q' if the window
     is closed.
+
+    Like the PGPLOT cursor, key presses and left clicks work over the whole
+    window, not just inside the axes box - coordinates are extrapolated from
+    the pixel position (handy for 'x'/'y'/'e' just outside the axis).
+    Clicks on widgets (the ? button) are still ignored.
 
     With allow_drag=True a left-button drag rubber-band zooms (like 'e') and
     returns ch='drag' after updating the view state; a purely horizontal drag
@@ -343,31 +398,40 @@ def pgband(allow_drag=False):
         toolbar = getattr(fig.canvas.manager, "toolbar", None)
         return getattr(toolbar, "mode", "") if toolbar is not None else ""
 
+    def data_xy(ev):
+        # PGPLOT-style whole-surface cursor read (see surface_xy)
+        return surface_xy(ax, ev)
+
     def on_key(ev):
-        done(ev.xdata, ev.ydata, normkey(ev.key))
+        xd, yd = data_xy(ev)
+        done(xd, yd, normkey(ev.key))
 
     def on_press(ev):
-        if ev.inaxes is not ax:
-            return  # clicks elsewhere (margins, the ? button) aren't cursor reads
-        if allow_drag and ev.button == 3:
+        if ev.inaxes is not ax and ev.inaxes is not None:
+            return  # clicks on widgets (the ? button) aren't cursor reads
+        if allow_drag and ev.button == 3 and ev.inaxes is ax:
             done(ev.xdata, ev.ydata, "menu")  # right-click: quick line menu
             return
-        if allow_drag and ev.button == 1 and not toolbar_mode():
+        xd, yd = data_xy(ev)
+        if allow_drag and ev.button == 1 and ev.inaxes is ax and not toolbar_mode():
             drag["xpx"], drag["ypx"] = ev.x, ev.y     # pixels, for threshold
-            drag["x0"], drag["y0"] = ev.xdata, ev.ydata
-            drag["x1"], drag["y1"] = ev.xdata, ev.ydata
+            drag["x0"], drag["y0"] = xd, yd
+            drag["x1"], drag["y1"] = xd, yd
             drag["rect"] = ax.add_patch(Rectangle(
-                (ev.xdata, ev.ydata), 0, 0, fill=False,
+                (xd, yd), 0, 0, fill=False,
                 edgecolor="red", lw=0.8, ls="--"))
         else:
-            done(ev.xdata, ev.ydata, "A")
+            done(xd, yd, "A")
 
     def on_motion(ev):
-        if "rect" not in drag or ev.inaxes is not ax:
+        if "rect" not in drag or (ev.inaxes is not ax and ev.inaxes is not None):
             return
-        drag["x1"], drag["y1"] = ev.xdata, ev.ydata
+        xd, yd = data_xy(ev)
+        if xd is None:
+            return
+        drag["x1"], drag["y1"] = xd, yd
         drag["rect"].set_bounds(drag["x0"], drag["y0"],
-                                ev.xdata - drag["x0"], ev.ydata - drag["y0"])
+                                xd - drag["x0"], yd - drag["y0"])
         fig.canvas.draw_idle()
 
     def on_release(ev):
@@ -547,31 +611,40 @@ def make_readout():
 
 def snapshot_readout(ev):
     """Cache the bottom-right corner after every full draw (the readout
-    artist is animated, so it is never part of the cached image), then
-    re-render the readout so redraws don't blank it - recomputed, so a
-    new redshift updates the rest wavelength immediately."""
+    artist is animated, so it is never part of the cached image).  Only a
+    snapshot: re-rendering here would bake the text into the buffer before
+    the cursor takes ITS (full-figure) snapshot; the cursor's _redraw
+    re-renders the readout after every repaint instead."""
     global readout_bg
     W, H = fig.bbox.width, fig.bbox.height
     box = Bbox([[0.40 * W, 0.0], [W, 0.055 * H]])
     readout_bg = (fig.canvas.copy_from_bbox(box), box)
-    if readout_lastev is not None:
-        update_readout(readout_lastev)
 
 
-def update_readout(ev):
+def set_readout_text(ev):
+    """Recompute the readout for an event - separate from the blit so the
+    cursor can refresh the text mid-pass (a new redshift must update the
+    rest wavelength immediately, not on the next mouse move)."""
     global readout_lastev
-    if readout_artist is None or readout_bg is None or f is None:
+    if readout_artist is None or f is None:
         return
     readout_lastev = ev
-    if ev.inaxes is ax and ev.xdata is not None:
-        i = int(np.argmin(np.abs(w - ev.xdata)))
+    xd, yd = surface_xy(ax, ev)
+    if xd is not None:  # whole window, like the crosshair (pix clamps at ends)
+        i = int(np.argmin(np.abs(w - xd)))
         wfmt = "%.5f" if micron_mode else "%.2f"
-        rest = wfmt % (ev.xdata / (1 + zshift)) if found else "-"
+        rest = wfmt % (xd / (1 + zshift)) if found else "-"
         text = ("pix %d   y %.4g   λ %s   rest %s   flux %.4g"
-                % (i, ev.ydata, wfmt % ev.xdata, rest, f[i]))
+                % (i, yd, wfmt % xd, rest, f[i]))
     else:
         text = ""
     readout_artist.set_text(text)
+
+
+def update_readout(ev):
+    if readout_artist is None or readout_bg is None or f is None:
+        return
+    set_readout_text(ev)
     bg, box = readout_bg
     fig.canvas.restore_region(bg)
     fig.draw_artist(readout_artist)

@@ -100,7 +100,9 @@ short guide in separate tabs. The essentials:
 - **Navigate**: drag the mouse for a rubber-band zoom (a purely horizontal
   drag zooms X only), `z`/`u` and `i`/`o` zoom about the cursor, `[` `]`
   pan, `w` whole range, `a` autoscale, `h` home. The matplotlib toolbar
-  works too and stays in sync.
+  works too and stays in sync. As in PGPLOT the cursor works over the
+  whole window — press `x`/`y`/`e` just outside the axis to select a
+  range flush with the plot edge.
 - **Analyse**: `b` bin, `s` smooth, `_` iterative continuum fit,
   `m` equivalent width and line flux, `B` zap artefacts, `p` print to PDF.
 - **Quit**: `q` — the final redshift is reported on the terminal.
