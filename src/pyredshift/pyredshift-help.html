@@ -98,12 +98,15 @@ colours as plotted):</p>
 <h2>Guide</h2>
 <p>pyredshift is a tool for measuring the redshift of a galaxy or quasar
 from a 1D spectrum, by eye. Run it as <code>pyredshift file</code> &mdash;
-the format (FITS image or table, SDSS, JWST, XSHOOTER, OutThere, CSV,
-2-column ascii) is auto-detected, with <code>-f</code> to force one,
-<code>-z</code> to start from a known redshift and <code>--retro</code>
-for a retro PGPLOT-style black background. It plots the spectrum histogram-style with a
+the file format is auto-detected (see the table below), with
+<code>-f</code> to force one, <code>-z</code> to start from a known
+redshift and <code>--retro</code> for a retro PGPLOT-style black
+background. It plots the spectrum histogram-style with a
 crosshair cursor, and overlays rest-frame line identifications that
 follow the trial redshift shown at top left.</p>
+
+<h2>File formats</h2>
+{formats}
 
 <p>The basic game: spot a feature you can identify, put the crosshair on
 it and press <code>ESC</code> then the line's shortcut key (or

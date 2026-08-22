@@ -22,7 +22,10 @@ preserve original comment text when refactoring.
 
 ```
 pyredshift               script: CLI + all the spectrum-format readers
-                         (deliberately in the script, NOT the module)
+                         (deliberately in the script, NOT the module);
+                         when adding a reader, update FORMAT_HELP in
+                         redshift.py (single source for the -h epilog
+                         AND the help page's File formats table)
 src/pyredshift/          the package (src layout: a file and a dir
   redshift.py            cannot both be called "pyredshift")
   pyredshift.lines       line list: CSV, VACUUM wavelengths, colour may

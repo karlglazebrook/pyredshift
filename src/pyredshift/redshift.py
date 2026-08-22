@@ -94,6 +94,27 @@ C_LIGHT = 2.99792458e8  # m/s
 
 TEMPLATE_NAME = "GNIRS_N4608"  # template for the 't' key
 
+# One description per reader in the pyredshift script - the single source
+# for both the script's -h epilog and the Formats section of the help page.
+# Keep in sync when adding a reader to the script.
+FORMAT_HELP = [
+    ("fits", "1D (or 2D - row 1 used) FITS image with WCS; CD1_1 "
+             "overrides CDELT1, IRAF/SDSS log-lambda flags handled"),
+    ("sdss", "SDSS/BOSS binary table (LOGLAM/FLUX, either case)"),
+    ("table", "generic binary table with wave+flux columns; TUNIT "
+              "(um, nm, A) converted automatically "
+              "(aliases: jwst, jwst2, gabe, dja)"),
+    ("xs", "XSHOOTER 1D table spectrum (nm)"),
+    ("xs2", "XSHOOTER as a FITS image in extension 1"),
+    ("outthere", "OutThere multi-extension grism spectra, stitched "
+                 "and flat-calibrated"),
+    ("csv", "comma-separated, header rows skipped"),
+    ("ascii", "2-column text"),
+]
+FORMAT_NOTES = ("Default is auto-detection. Wavelengths that look like "
+                "microns are converted to Angstroms (--microns keeps them); "
+                "NaNs are treated as bad pixels and plot as gaps.")
+
 CONFIG_FILE = os.path.expanduser("~/.pyredshift.json")  # remembers window size
 DEFAULT_FIGSIZE = (13.0, 5.5)  # inches
 
@@ -215,11 +236,35 @@ def linelist_html():
     return "<table class='linelist'>\n%s\n</table>" % "\n".join(rows)
 
 
+def formats_html():
+    """FORMAT_HELP as table rows + notes for the help page."""
+    rows = ["<tr><th>Format</th><th>Description</th></tr>"]
+    for name, desc in FORMAT_HELP:
+        rows.append("<tr><td><code>%s</code></td><td>%s</td></tr>"
+                    % (name, desc))
+    return ("<table>\n%s\n</table>\n<p>%s</p>"
+            % ("\n".join(rows), FORMAT_NOTES))
+
+
+def formats_text():
+    """FORMAT_HELP as aligned plain text for the script's -h epilog."""
+    import textwrap
+    width = max(len(name) for name, _ in FORMAT_HELP)
+    lines = ["Formats (-f):"]
+    for name, desc in FORMAT_HELP:
+        lines.append(textwrap.fill(
+            desc, width=79, initial_indent="  %-*s  " % (width, name),
+            subsequent_indent=" " * (width + 4)))
+    lines.append(textwrap.fill(FORMAT_NOTES, width=79))
+    return "\n".join(lines)
+
+
 def help_html():
     """The help HTML body with the placeholders filled in."""
     if HELP_RAW is None:
         return None
-    return HELP_RAW.format(template=TEMPLATE_NAME, linelist=linelist_html())
+    return HELP_RAW.format(template=TEMPLATE_NAME, linelist=linelist_html(),
+                           formats=formats_html())
 
 
 # ---------------------------------------------------------------------------

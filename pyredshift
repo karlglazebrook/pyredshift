@@ -264,9 +264,14 @@ def read_spectrum(fname, fmt=None):
 def main():
     ap = argparse.ArgumentParser(
         prog="pyredshift",
+        usage="pyredshift [-help] [-f FORMAT] [-z REDSHIFT] [--retro] "
+              "[--microns] file",
         description="Interactive redshifting of 1D spectra (port of pdlredshift).",
-        epilog="Formats: ascii csv fits sdss table (=jwst,jwst2,gabe,dja) "
-               "xs xs2 outthere.  Default is auto-detection.")
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        # format documentation lives in the module (FORMAT_HELP) so the
+        # -h epilog and the '?' help page cannot drift apart
+        epilog=redshift_module.formats_text())
+    ap.add_argument("-help", action="help", help=argparse.SUPPRESS)
     ap.add_argument("file", help="spectrum file (FITS, CSV or 2-column ascii)")
     ap.add_argument("-f", "--format", default=None, metavar="FORMAT",
                     help="force the input format instead of auto-detecting")
