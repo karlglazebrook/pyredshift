@@ -49,6 +49,9 @@ V1.10 - The cursor works over the whole window, as PGPLOT's did: keys and
        'x'/'y'/'e' can be pressed just outside the axis, pdlredshift
        style), the crosshair and the readout follow into the margins,
        and rubber-band drags may extend past the plot edge.
+V1.11 - Proper file-format documentation: a per-format table in the
+       script's -h and a File formats section in the help page, both
+       generated from FORMAT_HELP here so they cannot drift apart.
 """
 
 import ctypes
@@ -88,7 +91,7 @@ try:
 except AttributeError:
     pass
 
-__version__ = "1.10"
+__version__ = "1.11"
 
 C_LIGHT = 2.99792458e8  # m/s
 
