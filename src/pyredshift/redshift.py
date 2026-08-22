@@ -52,6 +52,7 @@ V1.10 - The cursor works over the whole window, as PGPLOT's did: keys and
 V1.11 - Proper file-format documentation: a per-format table in the
        script's -h and a File formats section in the help page, both
        generated from FORMAT_HELP here so they cannot drift apart.
+V1.12 - The version number is shown by -h/-help and on the help page.
 """
 
 import ctypes
@@ -91,7 +92,7 @@ try:
 except AttributeError:
     pass
 
-__version__ = "1.11"
+__version__ = "1.12"
 
 C_LIGHT = 2.99792458e8  # m/s
 
@@ -267,7 +268,7 @@ def help_html():
     if HELP_RAW is None:
         return None
     return HELP_RAW.format(template=TEMPLATE_NAME, linelist=linelist_html(),
-                           formats=formats_html())
+                           formats=formats_html(), version=__version__)
 
 
 # ---------------------------------------------------------------------------
@@ -974,6 +975,7 @@ body { font-family: -apple-system, "Helvetica Neue", sans-serif;
        max-width: 46em; margin: 2em auto; padding: 0 1em;
        color: %(fg)s; background: %(bg)s; line-height: 1.45; }
 h1 { font-size: 1.5em; border-bottom: 2px solid %(rule)s; padding-bottom: 0.2em; }
+h1 .ver { font-size: 0.6em; font-weight: normal; color: %(accent)s; }
 h2 { font-size: 1.15em; color: %(accent)s; margin-top: 1.4em; }
 table { border-collapse: collapse; margin: 0.5em 0; }
 th, td { border: 1px solid %(rule)s; padding: 0.25em 0.7em; text-align: left; }

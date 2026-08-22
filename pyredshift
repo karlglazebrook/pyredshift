@@ -266,7 +266,8 @@ def main():
         prog="pyredshift",
         usage="pyredshift [-help] [-f FORMAT] [-z REDSHIFT] [--retro] "
               "[--microns] file",
-        description="Interactive redshifting of 1D spectra (port of pdlredshift).",
+        description="Interactive redshifting of 1D spectra "
+                    "(port of pdlredshift), v%s." % redshift_module.__version__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         # format documentation lives in the module (FORMAT_HELP) so the
         # -h epilog and the '?' help page cannot drift apart
