@@ -75,10 +75,15 @@ def read_csv(fname):
                 continue
             parts = line.split(",")
             try:
-                wav.append(float(parts[0]))
-                spec.append(float(parts[1]))
+                x = float(parts[0])
             except (IndexError, ValueError):
-                continue
+                continue  # no wavelength - not a data row
+            try:
+                y = float(parts[1])
+            except (IndexError, ValueError):
+                y = np.nan  # blank/bad flux cell -> bad pixel, plots as a gap
+            wav.append(x)
+            spec.append(y)
     return np.array(wav), np.array(spec), True
 
 

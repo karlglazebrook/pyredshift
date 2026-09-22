@@ -53,6 +53,9 @@ V1.11 - Proper file-format documentation: a per-format table in the
        script's -h and a File formats section in the help page, both
        generated from FORMAT_HELP here so they cannot drift apart.
 V1.12 - The version number is shown by -h/-help and on the help page.
+V1.13 - CSV reader: blank flux cells are bad pixels (NaN, plotted as
+       gaps) instead of desynchronising the wavelength and flux arrays;
+       rows with no wavelength are skipped.
 """
 
 import ctypes
@@ -92,7 +95,7 @@ try:
 except AttributeError:
     pass
 
-__version__ = "1.12"
+__version__ = "1.13"
 
 C_LIGHT = 2.99792458e8  # m/s
 
