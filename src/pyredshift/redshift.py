@@ -1016,6 +1016,7 @@ body { font-family: -apple-system, "Helvetica Neue", sans-serif;
 h1 { font-size: 1.5em; border-bottom: 2px solid %(rule)s; padding-bottom: 0.2em; }
 h1 .ver { font-size: 0.6em; font-weight: normal; color: %(accent)s; }
 p.lineage { font-size: 0.85em; color: %(rule)s; margin-top: -0.3em; }
+a { color: %(accent)s; }
 h2 { font-size: 1.15em; color: %(accent)s; margin-top: 1.4em; }
 table { border-collapse: collapse; margin: 0.5em 0; }
 th, td { border: 1px solid %(rule)s; padding: 0.25em 0.7em; text-align: left; }
