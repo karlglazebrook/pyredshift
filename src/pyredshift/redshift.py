@@ -56,6 +56,16 @@ V1.12 - The version number is shown by -h/-help and on the help page.
 V1.13 - CSV reader: blank flux cells are bad pixels (NaN, plotted as
        gaps) instead of desynchronising the wavelength and flux arrays;
        rows with no wavelength are skipped.
+V1.14 - Saving works properly: the toolbar save button no longer
+       truncates the output (the crosshair/readout blit machinery ran
+       during savefig and corrupted the file render), and the crosshair
+       and readout are no longer printed into saved PNGs/PDFs (savefig
+       draws animated artists - they now stay invisible outside blit
+       passes; the crosshair had been in 'p' output since V1.0).
+     - The backend chooser actually imports each backend before
+       choosing it, so a python without Qt falls back to MacOSX
+       instead of crashing at the first figure.
+     - Lineage/credits at the top of the help page.
 """
 
 import ctypes
@@ -69,10 +79,16 @@ from html.parser import HTMLParser
 import numpy as np
 import matplotlib
 
-# Pick a GUI backend unless the user forced one via MPLBACKEND
+# Pick a GUI backend unless the user forced one via MPLBACKEND.
+# matplotlib.use() validates lazily (a missing Qt only explodes later at
+# figure creation), so import the backend module to prove it really works.
 if "MPLBACKEND" not in os.environ:
-    for _backend in ("QtAgg", "MacOSX", "TkAgg"):
+    import importlib
+    for _backend, _mod in (("QtAgg", "backend_qtagg"),
+                           ("MacOSX", "backend_macosx"),
+                           ("TkAgg", "backend_tkagg")):
         try:
+            importlib.import_module("matplotlib.backends." + _mod)
             matplotlib.use(_backend)
             break
         except ImportError:
@@ -95,7 +111,7 @@ try:
 except AttributeError:
     pass
 
-__version__ = "1.13"
+__version__ = "1.14"
 
 C_LIGHT = 2.99792458e8  # m/s
 
@@ -384,27 +400,38 @@ class StickyCursor(Cursor):
         self.linev.set_data((xdata, xdata),
                             ((figbb.y0 - axbb.y0) / axbb.height,
                              (figbb.y1 - axbb.y0) / axbb.height))
-        self.linev.set_visible(self.visible and self.vertOn)
         self.lineh.set_data(((figbb.x0 - axbb.x0) / axbb.width,
                              (figbb.x1 - axbb.x0) / axbb.width),
                             (ydata, ydata))
-        self.lineh.set_visible(self.visible and self.horizOn)
         if not (self.visible and (self.vertOn or self.horizOn)):
             return
-        # Redraw
+        # Redraw. Animated artists still land in savefig output (bitten:
+        # crosshair printed into PDFs/PNGs), so they stay invisible except
+        # inside this blit pass - a save sees them switched off.
         if self.useblit:
             if self.background is not None:
                 self.canvas.restore_region(self.background)
+            self.linev.set_visible(self.vertOn)
+            self.lineh.set_visible(self.horizOn)
             self.ax.draw_artist(self.linev)
             self.ax.draw_artist(self.lineh)
+            self.linev.set_visible(False)
+            self.lineh.set_visible(False)
             if readout_artist is not None:
                 set_readout_text(event)          # restore wiped the corner -
+                readout_artist.set_visible(True)
                 fig.draw_artist(readout_artist)  # redraw with fresh values
+                readout_artist.set_visible(False)
             self.canvas.blit(figbb)
         else:
+            self.linev.set_visible(self.visible and self.vertOn)
+            self.lineh.set_visible(self.visible and self.horizOn)
             self.canvas.draw_idle()
 
     def _redraw(self, event):
+        if self.canvas.is_saving():
+            return  # savefig also fires draw_event: never blit the screen
+                    # background into a file render (bitten: truncated PNGs)
         if self.active and self._last_event is not None:
             self.onmove(self._last_event)
         elif readout_lastev is not None:
@@ -652,8 +679,11 @@ readout_lastev = None  # last motion event, to survive full redraws
 
 def make_readout():
     global readout_artist, readout_bg, readout_lastev
+    # visible=False except inside blit passes: savefig draws animated
+    # artists (mpl 3.9), so this keeps the readout out of saved output
     readout_artist = fig.text(0.995, 0.012, "", ha="right", va="bottom",
                               family="monospace", fontsize=8, animated=True,
+                              visible=False,
                               color="white" if dark_mode else "black")
     readout_bg = None
     readout_lastev = None
@@ -668,6 +698,8 @@ def snapshot_readout(ev):
     the cursor takes ITS (full-figure) snapshot; the cursor's _redraw
     re-renders the readout after every repaint instead."""
     global readout_bg
+    if fig.canvas.is_saving():
+        return  # don't snapshot a file render as the screen background
     W, H = fig.bbox.width, fig.bbox.height
     box = Bbox([[0.40 * W, 0.0], [W, 0.055 * H]])
     readout_bg = (fig.canvas.copy_from_bbox(box), box)
@@ -696,10 +728,14 @@ def set_readout_text(ev):
 def update_readout(ev):
     if readout_artist is None or readout_bg is None or f is None:
         return
+    if fig.canvas.is_saving():
+        return  # no blitting into a file render
     set_readout_text(ev)
     bg, box = readout_bg
     fig.canvas.restore_region(bg)
+    readout_artist.set_visible(True)
     fig.draw_artist(readout_artist)
+    readout_artist.set_visible(False)
     fig.canvas.blit(box)
 
 
@@ -979,6 +1015,7 @@ body { font-family: -apple-system, "Helvetica Neue", sans-serif;
        color: %(fg)s; background: %(bg)s; line-height: 1.45; }
 h1 { font-size: 1.5em; border-bottom: 2px solid %(rule)s; padding-bottom: 0.2em; }
 h1 .ver { font-size: 0.6em; font-weight: normal; color: %(accent)s; }
+p.lineage { font-size: 0.85em; color: %(rule)s; margin-top: -0.3em; }
 h2 { font-size: 1.15em; color: %(accent)s; margin-top: 1.4em; }
 table { border-collapse: collapse; margin: 0.5em 0; }
 th, td { border: 1px solid %(rule)s; padding: 0.25em 0.7em; text-align: left; }
