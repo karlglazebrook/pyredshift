@@ -13,7 +13,7 @@ from setuptools import setup
 
 setup(
     name="pyredshift",
-    version="1.14",
+    version="1.15",
     description="Interactive redshifting of 1D astronomical spectra "
                 "(Python successor of pdlredshift / redshift.f)",
     long_description=open("README.md").read(),

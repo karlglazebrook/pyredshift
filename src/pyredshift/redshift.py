@@ -66,6 +66,8 @@ V1.14 - Saving works properly: the toolbar save button no longer
        choosing it, so a python without Qt falls back to MacOSX
        instead of crashing at the first figure.
      - Lineage/credits at the top of the help page.
+V1.15 - Help-page credits link to the GitHub repo; lineage text in a
+       readable muted grey in both themes.
 """
 
 import ctypes
@@ -111,7 +113,7 @@ try:
 except AttributeError:
     pass
 
-__version__ = "1.14"
+__version__ = "1.15"
 
 C_LIGHT = 2.99792458e8  # m/s
 
@@ -1015,7 +1017,7 @@ body { font-family: -apple-system, "Helvetica Neue", sans-serif;
        color: %(fg)s; background: %(bg)s; line-height: 1.45; }
 h1 { font-size: 1.5em; border-bottom: 2px solid %(rule)s; padding-bottom: 0.2em; }
 h1 .ver { font-size: 0.6em; font-weight: normal; color: %(accent)s; }
-p.lineage { font-size: 0.85em; color: %(rule)s; margin-top: -0.3em; }
+p.lineage { font-size: 0.85em; color: %(muted)s; margin-top: -0.3em; }
 a { color: %(accent)s; }
 h2 { font-size: 1.15em; color: %(accent)s; margin-top: 1.4em; }
 table { border-collapse: collapse; margin: 0.5em 0; }
@@ -1052,8 +1054,10 @@ def show_help_browser(body):
         return False
     import webbrowser
     colours = ({"fg": "#ddd", "bg": "#111", "rule": "#555",
+                "muted": "#aaa",
                 "accent": "#f66", "thbg": "#222"} if dark_mode else
                {"fg": "#111", "bg": "#fff", "rule": "#bbb",
+                "muted": "#555",
                 "accent": "crimson", "thbg": "#f0f0f0"})
     html = ("<!DOCTYPE html><html><head><meta charset='utf-8'>"
             "<title>pyredshift help</title><style>%s</style></head>"
