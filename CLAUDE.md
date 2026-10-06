@@ -76,8 +76,10 @@ the module's own directory and MUST ship together (`package_data`).
   `canvas.flush_events()` afterwards or the window beachballs.
 - **Stale `build/` dirs bake old files into wheels** — `rm -rf build
   *.egg-info src/*.egg-info` around installs.
-- StickyCursor.onmove is a copy of matplotlib 3.9's Cursor.onmove minus
-  the widgetlock check — re-sync if matplotlib is upgraded.
+- StickyCursor.onmove is based on matplotlib 3.9's Cursor.onmove minus
+  the widgetlock check; checked against 3.11 (whose overlapping-axes
+  useblit guard and _save/_load_blit_background helpers we override —
+  we manage self.background ourselves). Re-check on mpl upgrades.
 - matplotlib's default keymaps steal the command keys — cleared at
   import.
 - Notebook use needs a local kernel (window opens on the kernel's
@@ -98,9 +100,10 @@ scripted-session regression after touching the main loop.
 ## Workflows
 
 - Dev run: `./pyredshift Example-Spectra/...fits` in this folder.
-- Install/refresh: `/opt/anaconda3/bin/pip install --force-reinstall
-  --no-deps .` (Karl's live python is /opt/anaconda3, has PyQt →
-  QtAgg in notebooks, MacOSX backend otherwise).
+- Install/refresh: `~/anaconda3/bin/pip install --force-reinstall
+  --no-deps .` (Karl's live python moved to ~/anaconda3 in Oct 2026 —
+  python 3.14, matplotlib 3.11, has PyQt → QtAgg; /opt/anaconda3 is
+  gone. Apple/Xcode python3 also runs it, MacOSX backend).
 - Branches: `main` = releases, `experimental` = risky features; merge
   to main when proven, then fast-forward experimental to match.
 - Release: bump `__version__` (redshift.py) AND `version=` (setup.py)

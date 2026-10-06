@@ -68,6 +68,13 @@ V1.14 - Saving works properly: the toolbar save button no longer
      - Lineage/credits at the top of the help page.
 V1.15 - Help-page credits link to the GitHub repo; lineage text in a
        readable muted grey in both themes.
+V1.16 - Bare modifier presses are no longer input: ESC shift-O works
+       (the 'shift' keydown used to be read as the shortcut key), a
+       stray shift can't consume the second pick of x/y/e/m or close
+       the line menu.
+     - matplotlib 3.11 compatibility: keep full-figure blitting on
+       when another axes overlaps (3.11 would silently disable it on
+       tall windows), manage the cursor background ourselves.
 """
 
 import ctypes
@@ -113,7 +120,7 @@ try:
 except AttributeError:
     pass
 
-__version__ = "1.15"
+__version__ = "1.16"
 
 C_LIGHT = 2.99792458e8  # m/s
 
@@ -365,7 +372,19 @@ class StickyCursor(Cursor):
 
     def __init__(self, ax_, **kwargs):
         self._last_event = None
-        super().__init__(ax_, **kwargs)
+        with warnings.catch_warnings():
+            # mpl 3.11 warns + disables useblit on overlapping axes;
+            # we re-assert it below, so don't let the warning through
+            warnings.simplefilter("ignore", UserWarning)
+            super().__init__(ax_, **kwargs)
+        # matplotlib 3.11 disables useblit when another axes overlaps (the
+        # '?' button can overlap on tall windows) - a guard our full-figure
+        # blit doesn't need; it also no longer initialises self.background
+        # (we manage it ourselves in clear())
+        self.useblit = self.canvas.supports_blit
+        self.linev.set_animated(self.useblit)
+        self.lineh.set_animated(self.useblit)
+        self.background = None
         self.linev.set_clip_on(False)   # let the crosshair escape the box
         self.lineh.set_clip_on(False)
         self.connect_event("draw_event", self._redraw)
@@ -380,9 +399,10 @@ class StickyCursor(Cursor):
             self.background = self.canvas.copy_from_bbox(self.canvas.figure.bbox)
 
     def onmove(self, event):
-        # Copy of Cursor.onmove from matplotlib 3.9, minus the widgetlock
-        # check (version sensitive - revisit if matplotlib is upgraded),
-        # with whole-window coords and full-figure blitting.
+        # Based on Cursor.onmove from matplotlib 3.9, minus the widgetlock
+        # check, with whole-window coords and full-figure blitting. Checked
+        # against matplotlib 3.11 (which moved to _save/_load_blit_background
+        # helpers - we keep our own self.background instead).
         if self.ignore(event):
             return
         xdata, ydata = surface_xy(self.ax, event)
@@ -443,6 +463,12 @@ class StickyCursor(Cursor):
             update_readout(readout_lastev)
 
 
+# Pressing a modifier fires its own key_press_event before the combination
+# (ESC shift-O used to read the bare 'shift' as the shortcut key)
+MODIFIER_KEYS = ("shift", "control", "ctrl", "alt", "cmd", "super", "meta",
+                 "caps_lock", "fn")
+
+
 def normkey(ch):
     # Some backends report shifted letters as 'shift+b' - normalise to 'B'
     if ch is not None and ch.startswith("shift+") and len(ch) == 7:
@@ -484,6 +510,8 @@ def pgband(allow_drag=False):
         return surface_xy(ax, ev)
 
     def on_key(ev):
+        if ev.key in MODIFIER_KEYS:
+            return  # a bare modifier press is not input
         xd, yd = data_xy(ev)
         done(xd, yd, normkey(ev.key))
 
@@ -649,6 +677,8 @@ def line_menu(xd, yd):
         fig.canvas.stop_event_loop()
 
     def on_key(ev):
+        if ev.key in MODIFIER_KEYS:
+            return  # don't let a bare shift press close the menu
         state["picked"] = None
         fig.canvas.stop_event_loop()
 
